@@ -31,23 +31,26 @@ function saveGuestNotes(notes: Note[]) {
 
 export function UnifiedNotesProvider({ isGuest, children }: { isGuest: boolean; children: ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(!isGuest);
+  const [loading, setLoading] = useState(true);
+  const [guestLoaded, setGuestLoaded] = useState(false);
   const dataRef = useRef(notes);
 
   useEffect(() => { dataRef.current = notes; }, [notes]);
 
-  // Guest mode: load from localStorage
+  // Guest mode: load from localStorage once we know it's guest
   useEffect(() => {
     if (isGuest) {
       setNotes(loadGuestNotes());
       setLoading(false);
+      // Mark loaded AFTER setting notes, so save effect doesn't run first
+      requestAnimationFrame(() => setGuestLoaded(true));
     }
   }, [isGuest]);
 
-  // Guest mode: persist to localStorage
+  // Guest mode: persist to localStorage ONLY after initial load is done
   useEffect(() => {
-    if (isGuest) saveGuestNotes(notes);
-  }, [notes, isGuest]);
+    if (isGuest && guestLoaded) saveGuestNotes(notes);
+  }, [notes, isGuest, guestLoaded]);
 
   // Auth mode: load from API
   useEffect(() => {
