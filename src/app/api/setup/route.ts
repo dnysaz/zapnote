@@ -27,6 +27,18 @@ export async function POST() {
       doc_id TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
+    await sql`CREATE TABLE IF NOT EXISTS articles (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      length TEXT NOT NULL DEFAULT 'medium',
+      keyword TEXT NOT NULL DEFAULT '',
+      links TEXT NOT NULL DEFAULT '',
+      swot JSONB,
+      verified BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`;
     await sql`INSERT INTO settings (id, data) VALUES ('site', '{"siteName":"ViNotes","theme":"emerald"}'::jsonb) ON CONFLICT (id) DO NOTHING`;
     return NextResponse.json({ ok: true });
   } catch (error) {
