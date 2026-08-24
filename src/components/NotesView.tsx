@@ -24,8 +24,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { NotesShell } from "@/components/NotesShell";
-import { useNotes } from "@/components/NotesProvider";
-import { useGuestNotes } from "@/components/GuestNotesProvider";
+import { useNotes } from "@/components/UnifiedNotesProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
@@ -85,9 +84,7 @@ function snippet(note: Note): string {
 export function NotesView() {
   const { session } = useAuth();
   const isGuest = session.status === "anonymous";
-  const authNotes = useNotes();
-  const guestNotes = useGuestNotes();
-  const { notes, addNote, updateNote, deleteNote } = isGuest ? guestNotes : authNotes;
+  const { notes, addNote, updateNote, deleteNote } = useNotes();
   const [editor, setEditor] = useState<NoteDraft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);

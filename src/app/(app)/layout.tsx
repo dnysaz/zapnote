@@ -1,15 +1,12 @@
 "use client";
 
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
-import { NotesProvider } from "@/components/NotesProvider";
-import { GuestNotesProvider } from "@/components/GuestNotesProvider";
+import { UnifiedNotesProvider } from "@/components/UnifiedNotesProvider";
 
 function NotesWrapper({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
-  if (session.status === "anonymous") {
-    return <GuestNotesProvider>{children}</GuestNotesProvider>;
-  }
-  return <NotesProvider>{children}</NotesProvider>;
+  const isGuest = session.status === "anonymous";
+  return <UnifiedNotesProvider isGuest={isGuest}>{children}</UnifiedNotesProvider>;
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
