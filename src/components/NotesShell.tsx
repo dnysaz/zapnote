@@ -5,20 +5,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useSettings } from "@/components/SettingsProvider";
-import { Bot, FileText, LogOut, NotebookPen, PenLine } from "lucide-react";
+import { Bot, Globe, LogOut, NotebookPen, PenLine } from "lucide-react";
 
 const navItems = [
   { label: "Notes", href: "/notes", icon: NotebookPen },
-  { label: "Articles", href: "/articles", icon: PenLine },
-  { label: "SWOT Analysis", href: "/swot", icon: Bot },
+  { label: "Articles", href: "/articles", icon: PenLine, authOnly: true },
+  { label: "SWOT Analysis", href: "/swot", icon: Bot, authOnly: true },
 ];
 
 export function NotesShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   const { session, logout } = useAuth();
   const { settings } = useSettings();
   const pathname = usePathname();
+  const isGuest = session.status === "anonymous";
   const email = session.status === "authed" ? session.email : "";
-  const initials = (email || "U").slice(0, 2).toUpperCase();
+  const initials = isGuest ? "G" : (email || "U").slice(0, 2).toUpperCase();
+  const visibleNav = navItems.filter((item) => !item.authOnly || !isGuest);
 
   return (
     <div className="min-h-screen bg-(--crm-bg) font-[var(--font-dm)] text-(--crm-fg)">
@@ -35,22 +37,23 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
           <span className="text-lg font-semibold tracking-[-.03em]">{settings.siteName}</span>
         </div>
         <nav className="hidden items-center gap-1 sm:flex">
-          {navItems.map(({ label, href, icon: Icon }) => (
+          {visibleNav.map(({ label, href, icon: Icon }) => (
             <Link key={href} href={href} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${pathname === href ? "bg-(--crm-focus-ring) text-(--crm-text) shadow-sm" : "text-(--crm-muted) hover:bg-(--crm-hover) hover:text-(--crm-body)"}`}><Icon size={14} />{label}</Link>
           ))}
         </nav>
         <div className="flex items-center gap-3">
+          {isGuest && <span className="flex items-center gap-1 rounded-full border border-dashed border-(--crm-border) bg-(--crm-hover) px-2.5 py-1 text-[11px] font-semibold text-(--crm-muted)"><Globe size={12} />Guest</span>}
           <div className="h-6 w-px bg-(--crm-border)" />
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-(--crm-soft) text-xs font-bold text-(--crm-fg)">{initials}</span>
-            <button onClick={logout} className="rounded-lg p-2 text-(--crm-secondary) transition-colors hover:bg-(--crm-hover) hover:text-(--crm-fg)" title="Logout"><LogOut size={17} /></button>
+            <button onClick={logout} className="rounded-lg p-2 text-(--crm-secondary) transition-colors hover:bg-(--crm-hover) hover:text-(--crm-fg)" title={isGuest ? "Exit guest mode" : "Logout"}><LogOut size={17} /></button>
           </div>
         </div>
       </header>
 
       {/* Mobile nav */}
       <nav className="flex items-center gap-1 border-b border-(--crm-border) bg-(--crm-surface) px-5 py-2 sm:hidden">
-        {navItems.map(({ label, href, icon: Icon }) => (
+        {visibleNav.map(({ label, href, icon: Icon }) => (
           <Link key={href} href={href} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${pathname === href ? "bg-(--crm-focus-ring) text-(--crm-text) shadow-sm" : "text-(--crm-muted) hover:bg-(--crm-hover)"}`}><Icon size={14} />{label}</Link>
         ))}
       </nav>

@@ -1,51 +1,39 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { AuthScreen } from "@/components/AuthScreen";
 
 type Session =
   | { status: "loading" }
   | { status: "guest"; adminExists: boolean }
-  | { status: "authed"; email: string; name: string };
+  | { status: "authed"; email: string; name: string }
+  | { status: "anonymous" };
 
 type AuthContextValue = {
   session: Session;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  loginAsGuest: () => void;
   logout: () => Promise<void>;
-  updateName: (name: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const SHARE_CACHE_PREFIX = "wcrm-share:v3:";
-
-/** Wipes locally cached CRM data and share documents (incl. passcodes). */
-function clearClientCache() {
-  try {
-    window.localStorage.removeItem("vinotes:draft");
-    window.localStorage.removeItem("vinotes:fullscreen");
-  } catch {
-    // storage blocked — ignore
-  }
-  try {
-    for (let i = 0; i < window.sessionStorage.length; i++) {
-      const key = window.sessionStorage.key(i);
-      if (key && key.startsWith(SHARE_CACHE_PREFIX)) {
-        window.sessionStorage.removeItem(key);
-        i -= 1;
-      }
-    }
-  } catch {
-    // storage blocked — ignore
-  }
-}
+const GUEST_KEY = "vinotes:guest";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>({ status: "loading" });
 
   useEffect(() => {
+    // Check if user chose guest mode previously
+    try {
+      if (localStorage.getItem(GUEST_KEY) === "1") {
+        setSession({ status: "anonymous" });
+        return;
+      }
+    } catch {}
+
     void fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data: { authed: boolean; email?: string; name?: string; adminExists: boolean }) => {
@@ -56,11 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function postAuth(path: string, body: unknown) {
-    const res = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = (await res.json()) as { email?: string; name?: string; error?: string };
     if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
     return { email: data.email ?? "", name: data.name ?? "" };
@@ -76,21 +60,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession({ status: "authed", email: authedEmail, name });
   };
 
-  const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    clearClientCache();
-    setSession({ status: "guest", adminExists: true });
-  };
+  const loginAsGuest = useCallback(() => {
+    try { localStorage.setItem(GUEST_KEY, "1"); } catch {}
+    setSession({ status: "anonymous" });
+  }, []);
 
-  const updateName = async (name: string) => {
-    const res = await fetch("/api/auth/account", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const data = (await res.json()) as { name?: string; error?: string };
-    if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
-    setSession((prev) => (prev.status === "authed" ? { ...prev, name: data.name ?? prev.name } : prev));
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    try { localStorage.removeItem(GUEST_KEY); } catch {}
+    setSession({ status: "guest", adminExists: true });
   };
 
   if (session.status === "loading") {
@@ -102,10 +82,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   if (session.status === "guest") {
-    return <AuthScreen adminExists={session.adminExists} onLogin={login} onRegister={register} />;
+    return <AuthScreen adminExists={session.adminExists} onLogin={login} onRegister={register} onGuest={loginAsGuest} />;
   }
 
-  return <AuthContext.Provider value={{ session, login, register, logout, updateName }}>{children}</AuthContext.Provider>;
+  if (session.status === "anonymous") {
+    return <AuthContext.Provider value={{ session, login, register, loginAsGuest, logout }}>{children}</AuthContext.Provider>;
+  }
+
+  return <AuthContext.Provider value={{ session, login, register, loginAsGuest, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

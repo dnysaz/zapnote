@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { NotesShell } from "@/components/NotesShell";
 import { useNotes } from "@/components/NotesProvider";
+import { useGuestNotes } from "@/components/GuestNotesProvider";
+import { useAuth } from "@/components/AuthProvider";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
 import type { Note } from "@/lib/crm";
@@ -81,7 +83,11 @@ function snippet(note: Note): string {
 }
 
 export function NotesView() {
-  const { notes, addNote, updateNote, deleteNote } = useNotes();
+  const { session } = useAuth();
+  const isGuest = session.status === "anonymous";
+  const authNotes = useNotes();
+  const guestNotes = useGuestNotes();
+  const { notes, addNote, updateNote, deleteNote } = isGuest ? guestNotes : authNotes;
   const [editor, setEditor] = useState<NoteDraft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
@@ -420,7 +426,7 @@ export function NotesView() {
             </div>
             <div className="flex items-center gap-2">
               <button onClick={handleNewNote} className="flex items-center gap-1.5 rounded-lg border border-(--crm-border) bg-(--crm-surface) px-3 py-1.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-hover)" title="Save current & new note"><Plus size={14} />New Note</button>
-              {editor.id && (
+              {editor.id && !isGuest && (
                 <button onClick={handleShare} className="flex items-center gap-1.5 rounded-lg border border-(--crm-border) bg-(--crm-surface) px-3 py-1.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-hover)" title="Share note"><Link2 size={14} />Share</button>
               )}
               <div className="relative">
