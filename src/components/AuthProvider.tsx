@@ -66,10 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = async () => {
+    const wasGuest = session.status === "anonymous";
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {}
-    try { localStorage.removeItem(GUEST_KEY); } catch {}
+    // Guest: keep GUEST_KEY so notes persist, just show login screen again
+    // Auth: clear everything
+    if (!wasGuest) {
+      try { localStorage.removeItem(GUEST_KEY); } catch {}
+    }
     setSession({ status: "guest", adminExists: true });
   };
 
