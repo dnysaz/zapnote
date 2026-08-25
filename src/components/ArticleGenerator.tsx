@@ -353,12 +353,10 @@ export function ArticleGenerator() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openArticle(article); }
               }}
-              className="group relative flex cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-4 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]"
+              className="group relative flex cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-3 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--crm-soft) text-(--crm-text)">
-                  <FileText size={14} />
-                </div>
+              <div className="flex items-start justify-between gap-1">
+                <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-4 text-(--crm-fg)">{article.title}</p>
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(article); }}
                   className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100"
@@ -367,9 +365,9 @@ export function ArticleGenerator() {
                   <Trash2 size={13} />
                 </button>
               </div>
-              <p className="mt-3 line-clamp-2 text-sm font-semibold leading-4 text-(--crm-fg)">{article.title}</p>
-              <p className="mt-2 line-clamp-3 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(article) || "No content."}</p>
-              <div className="mt-3 flex items-center gap-2 border-t border-(--crm-border-soft) pt-2">
+              <div className="my-2.5 h-px bg-(--crm-border-soft)" />
+              <p className="line-clamp-4 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(article) || "No content."}</p>
+              <div className="mt-2.5 flex items-center gap-1.5 border-t border-(--crm-border-soft) pt-2">
                 <span className="rounded bg-(--crm-hover) px-1.5 py-0.5 text-[0.63rem] font-medium capitalize text-(--crm-secondary)">{article.length}</span>
                 {article.humanize && (
                   <span className={`rounded px-1.5 py-0.5 text-[0.63rem] font-semibold ${scoreColor(article.humanize.score)}`}>

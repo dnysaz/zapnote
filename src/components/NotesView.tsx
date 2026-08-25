@@ -519,7 +519,7 @@ export function NotesView() {
       ) : (
         <div className="crm-rise mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {visibleNotes.map((note) => (
-            <div key={note.id} onClick={() => openNote(note)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openNote(note); } }} className="group relative flex aspect-[3/4] cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-3 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]">
+            <div key={note.id} onClick={() => openNote(note)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openNote(note); } }} className="group relative flex min-h-[8rem] cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-3 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]">
               <div className="flex items-start justify-between gap-1">
                 <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-4 text-(--crm-fg)">{note.title || "Untitled note"}</p>
                 <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete note"><Trash2 size={13} /></button>

@@ -259,12 +259,10 @@ export function SwotAnalysis() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(a); }
               }}
-              className="group relative flex cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-4 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]"
+              className="group relative flex cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-3 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--crm-soft) text-(--crm-text)">
-                  <Bot size={14} />
-                </div>
+              <div className="flex items-start justify-between gap-1">
+                <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-4 text-(--crm-fg)">{a.title}</p>
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
                   className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100"
@@ -273,9 +271,9 @@ export function SwotAnalysis() {
                   <Trash2 size={13} />
                 </button>
               </div>
-              <p className="mt-3 line-clamp-2 text-sm font-semibold leading-4 text-(--crm-fg)">{a.title}</p>
-              <p className="mt-2 line-clamp-3 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(a.summary) || "No summary."}</p>
-              <div className="mt-3 flex items-center gap-2 border-t border-(--crm-border-soft) pt-2">
+              <div className="my-2.5 h-px bg-(--crm-border-soft)" />
+              <p className="line-clamp-4 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(a.summary) || "No summary."}</p>
+              <div className="mt-2.5 flex items-center gap-1.5 border-t border-(--crm-border-soft) pt-2">
                 <span className={`rounded px-1.5 py-0.5 text-[0.63rem] font-bold ${a.seoScore >= 70 ? "bg-green-50 text-green-700" : a.seoScore >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>
                   SEO {a.seoScore}/100
                 </span>
