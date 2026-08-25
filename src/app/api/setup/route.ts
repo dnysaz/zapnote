@@ -39,6 +39,13 @@ export async function POST() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
+    await sql`CREATE TABLE IF NOT EXISTS swot_analyses (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL DEFAULT '',
+      source_content TEXT NOT NULL DEFAULT '',
+      result JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`;
     await sql`INSERT INTO settings (id, data) VALUES ('site', '{"siteName":"ViNotes","theme":"emerald","geminiApiKey":""}'::jsonb) ON CONFLICT (id) DO NOTHING`;
     return NextResponse.json({ ok: true });
   } catch (error) {
