@@ -108,9 +108,19 @@ export const GEMINI_MODELS = [
 
 export type GeminiModelId = (typeof GEMINI_MODELS)[number]["id"];
 
+export type FontSize = "small" | "medium" | "large" | "xl";
+
+export const FONT_SIZES: { key: FontSize; label: string; size: string }[] = [
+  { key: "small", label: "Small", size: "14px" },
+  { key: "medium", label: "Medium", size: "16px" },
+  { key: "large", label: "Large", size: "18px" },
+  { key: "xl", label: "Extra Large", size: "20px" },
+];
+
 export interface SiteSettings {
   siteName: string;
   theme: ThemeKey;
+  fontSize: FontSize;
   geminiApiKey: string;
   geminiModel: GeminiModelId;
 }
@@ -118,6 +128,7 @@ export interface SiteSettings {
 export const DEFAULT_SETTINGS: SiteSettings = {
   siteName: "ViNotes",
   theme: "emerald",
+  fontSize: "medium",
   geminiApiKey: "",
   geminiModel: "gemini-3.5-flash" as const,
 };

@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useSettings } from "@/components/SettingsProvider";
 import { NotesShell } from "@/components/NotesShell";
 import { Check, CheckCircle2, Key, Loader2, Palette, Save, XCircle, Zap } from "lucide-react";
-import { THEMES, GEMINI_MODELS, type ThemeKey, type GeminiModelId, DEFAULT_SETTINGS } from "@/lib/settings";
+import { THEMES, GEMINI_MODELS, FONT_SIZES, type ThemeKey, type GeminiModelId, type FontSize, DEFAULT_SETTINGS } from "@/lib/settings";
 
 type ModelStatus = "idle" | "testing" | "ok" | "fail";
 
@@ -16,6 +16,7 @@ export default function SettingsView() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>(settings.theme);
+  const [fontSize, setFontSize] = useState<FontSize>(settings.fontSize || "medium");
 
   // Model test states
   const [modelStatuses, setModelStatuses] = useState<Record<string, ModelStatus>>({});
@@ -70,7 +71,7 @@ export default function SettingsView() {
 
   async function handleSave() {
     setSaving(true);
-    await updateSettings({ geminiApiKey: geminiKey, geminiModel, siteName, theme: selectedTheme });
+    await updateSettings({ geminiApiKey: geminiKey, geminiModel, siteName, theme: selectedTheme, fontSize });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -102,9 +103,7 @@ export default function SettingsView() {
             className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 py-2.5 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
             placeholder="ViNotes"
           />
-        </section>
-
-        {/* Theme */}
+        </section>        {/* Theme */}
         <section className="rounded-2xl border border-(--crm-border) bg-(--crm-panel) p-6">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-(--crm-fg)">
             <Palette size={16} /> Theme Color
@@ -128,6 +127,32 @@ export default function SettingsView() {
           <div className="mt-4 rounded-xl border border-(--crm-border-soft) p-4" style={{ background: THEMES[selectedTheme].soft }}>
             <p className="text-sm font-semibold" style={{ color: THEMES[selectedTheme].primary }}>Preview text</p>
             <p className="mt-1 text-xs" style={{ color: THEMES[selectedTheme].mid }}>This is how your app will look with this theme.</p>
+          </div>
+        </section>
+
+        {/* Font Size */}
+        <section className="rounded-2xl border border-(--crm-border) bg-(--crm-panel) p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-(--crm-fg)">
+            <Palette size={16} /> Font Size
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {FONT_SIZES.map((fs) => (
+              <button
+                key={fs.key}
+                onClick={() => setFontSize(fs.key)}
+                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                  fontSize === fs.key ? "border-(--crm-accent) bg-(--crm-soft)" : "border-transparent hover:bg-(--crm-hover)"
+                }`}
+              >
+                <span style={{ fontSize: fs.size }} className="font-semibold text-(--crm-fg)">Aa</span>
+                <span className="text-[11px] font-semibold text-(--crm-secondary)">{fs.label}</span>
+                <span className="text-[10px] text-(--crm-muted)">{fs.size}</span>
+              </button>
+            ))}
+          </div>
+          <div className="mt-4 rounded-xl border border-(--crm-border-soft) bg-(--crm-surface) p-4">
+            <p className="font-semibold text-(--crm-fg)">Preview text</p>
+            <p className="mt-1 text-(--crm-secondary)">This is how your app will look with this font size.</p>
           </div>
         </section>
 

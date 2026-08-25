@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_SETTINGS, type SiteSettings } from "@/lib/settings";
+import { DEFAULT_SETTINGS, FONT_SIZES, type SiteSettings } from "@/lib/settings";
 
 type SettingsContextValue = {
   settings: SiteSettings;
@@ -15,6 +15,14 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
+
+  // Apply font size to document
+  useEffect(() => {
+    const fontSize = settings.fontSize || "medium";
+    const size = FONT_SIZES.find((f) => f.key === fontSize)?.size || "16px";
+    document.documentElement.style.setProperty("--vn-font-size", size);
+    document.documentElement.style.fontSize = size;
+  }, [settings.fontSize]);
 
   useEffect(() => {
     fetch("/api/settings")
