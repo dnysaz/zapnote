@@ -24,7 +24,6 @@ export default function SettingsView() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [newEmail, setNewEmail] = useState("");
   const [accountSaving, setAccountSaving] = useState(false);
   const [accountSaved, setAccountSaved] = useState(false);
   const [accountError, setAccountError] = useState("");
@@ -36,7 +35,7 @@ export default function SettingsView() {
       .then((r) => r.json())
       .then((d: { name?: string; email?: string }) => {
         if (d.name !== undefined) setAccountName(d.name);
-        if (d.email !== undefined) { setAccountEmail(d.email); setNewEmail(d.email); }
+        if (d.email !== undefined) setAccountEmail(d.email);
       })
       .catch(() => {});
   }, []);
@@ -111,11 +110,6 @@ export default function SettingsView() {
       if (newPassword !== confirmPassword) { setAccountError("New passwords do not match."); return; }
     }
 
-    // Validate email change
-    if (newEmail.trim().toLowerCase() !== accountEmail && !currentPassword) {
-      setAccountError("Current password is required to change email."); return;
-    }
-
     setAccountSaving(true);
     try {
       const res = await fetch("/api/auth/account", {
@@ -124,7 +118,6 @@ export default function SettingsView() {
         body: JSON.stringify({
           name: accountName,
           ...(newPassword ? { currentPassword, newPassword } : {}),
-          ...(newEmail.trim().toLowerCase() !== accountEmail ? { newEmail: newEmail.trim().toLowerCase(), currentPassword } : {}),
         }),
       });
       const data = await res.json() as { error?: string };
@@ -133,7 +126,6 @@ export default function SettingsView() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      if (newEmail.trim().toLowerCase() !== accountEmail) setAccountEmail(newEmail.trim().toLowerCase());
       setTimeout(() => setAccountSaved(false), 2500);
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : "Something went wrong.");
@@ -330,15 +322,13 @@ export default function SettingsView() {
             <div>
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Email</label>
               <input
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                className="h-10 w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
+                value={accountEmail}
+                readOnly
+                className="h-10 w-full cursor-not-allowed rounded-xl border border-(--crm-border-input) bg-(--crm-hover) px-4 text-sm text-(--crm-muted) outline-none"
                 placeholder="name@email.com"
                 type="email"
               />
-              {newEmail.trim().toLowerCase() !== accountEmail && (
-                <p className="mt-1 text-[11px] text-orange-600">Changing email requires current password below.</p>
-              )}
+              <p className="mt-1 text-[11px] text-(--crm-muted)">Email cannot be changed.</p>
             </div>
 
             {/* Current Password */}
