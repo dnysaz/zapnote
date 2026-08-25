@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bot,
   Check,
   Copy,
   Download,
@@ -19,7 +18,16 @@ import {
 import { NotesShell } from "@/components/NotesShell";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import type { ArticleLength, ArticleStyle } from "@/lib/prompts";
+import { buildNotePdf, downloadPdf } from "@/lib/pdf";
 import { formatDate, uid } from "@/lib/crm";
+
+type HumanizeResult = {
+  score: number;
+  label: string;
+  breakdown: Record<string, number>;
+  description: string;
+  suggestions: string[];
+};
 
 type Article = {
   id: string;
@@ -28,14 +36,7 @@ type Article = {
   length: string;
   keyword: string;
   links: string;
-  swot: {
-    strengths: string[];
-    weaknesses: string[];
-    opportunities: string[];
-    threats: string[];
-    seoScore: number;
-    summary: string;
-  } | null;
+  humanize: HumanizeResult | null;
   verified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -72,6 +73,32 @@ function snippet(article: Article): string {
   return flat.length > 160 ? `${flat.slice(0, 160)}…` : flat;
 }
 
+function scoreColor(score: number): string {
+  if (score >= 80) return "text-green-600 bg-green-50";
+  if (score >= 60) return "text-yellow-600 bg-yellow-50";
+  if (score >= 40) return "text-orange-600 bg-orange-50";
+  return "text-red-600 bg-red-50";
+}
+
+function scoreBarColor(score: number): string {
+  if (score >= 80) return "bg-green-500";
+  if (score >= 60) return "bg-yellow-500";
+  if (score >= 40) return "bg-orange-500";
+  return "bg-red-500";
+}
+
+function BreakdownBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-24 shrink-0 text-[11px] font-medium capitalize text-(--crm-secondary)">{label}</span>
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-(--crm-border-soft)">
+        <div className={`h-full rounded-full transition-all duration-500 ${scoreBarColor(value)}`} style={{ width: `${value}%` }} />
+      </div>
+      <span className="w-8 shrink-0 text-right text-[11px] font-semibold text-(--crm-fg)">{value}</span>
+    </div>
+  );
+}
+
 export function ArticleGenerator() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,10 +121,11 @@ export function ArticleGenerator() {
   const [error, setError] = useState("");
 
   // Article detail actions
-  const [swotBusy, setSwotBusy] = useState(false);
+  const [humanizeBusy, setHumanizeBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Article | null>(null);
   const [toast, setToast] = useState("");
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetch("/api/ai/articles")
@@ -107,12 +135,12 @@ export function ArticleGenerator() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
+
   const sorted = useMemo(
-    () =>
-      [...articles].sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      ),
+    () => [...articles].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     [articles],
   );
 
@@ -120,11 +148,7 @@ export function ArticleGenerator() {
   const visibleArticles = useMemo(() => {
     if (query.length < 3) return sorted;
     const q = query.toLowerCase();
-    return sorted.filter(
-      (a) =>
-        a.title.toLowerCase().includes(q) ||
-        a.content.toLowerCase().includes(q),
-    );
+    return sorted.filter((a) => a.title.toLowerCase().includes(q) || a.content.toLowerCase().includes(q));
   }, [sorted, query]);
 
   function announce(msg: string) {
@@ -132,23 +156,12 @@ export function ArticleGenerator() {
     window.setTimeout(() => setToast(""), 2600);
   }
 
-  function setField<K extends keyof typeof form>(
-    key: K,
-    value: (typeof form)[K],
-  ) {
+  function setField<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((p) => ({ ...p, [key]: value }));
   }
 
   function resetForm() {
-    setForm({
-      topic: "",
-      description: "",
-      length: "medium",
-      style: "professional",
-      keyword: "",
-      links: "",
-      language: "English",
-    });
+    setForm({ topic: "", description: "", length: "medium", style: "professional", keyword: "", links: "", language: "English" });
     setError("");
   }
 
@@ -175,7 +188,6 @@ export function ArticleGenerator() {
       });
       const data = (await res.json()) as { markdown?: string; error?: string };
       if (!res.ok) throw new Error(data.error || "Failed to generate.");
-      // Save automatically
       const now = new Date().toISOString();
       const article: Article = {
         id: uid(),
@@ -184,7 +196,7 @@ export function ArticleGenerator() {
         length: form.length,
         keyword: form.keyword,
         links: form.links,
-        swot: null,
+        humanize: null,
         verified: false,
         createdAt: now,
         updatedAt: now,
@@ -206,46 +218,42 @@ export function ArticleGenerator() {
     }
   }
 
-  // ---- SWOT ----
-  async function runSwot(article: Article) {
-    setSwotBusy(true);
+  // ---- Humanize ----
+  async function runHumanize(article: Article) {
+    setHumanizeBusy(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const res = await fetch("/api/ai/swot", {
+      const res = await fetch("/api/ai/humanize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: article.content }),
+        signal: controller.signal,
       });
-      const data = (await res.json()) as {
-        strengths?: string[];
-        weaknesses?: string[];
-        opportunities?: string[];
-        threats?: string[];
-        seoScore?: number;
-        summary?: string;
-        error?: string;
+      const data = (await res.json()) as HumanizeResult & { error?: string };
+      if (!res.ok) throw new Error(data.error || "Humanize failed");
+      const humanize: HumanizeResult = {
+        score: data.score ?? 0,
+        label: data.label ?? "Unknown",
+        breakdown: data.breakdown ?? {},
+        description: data.description ?? "",
+        suggestions: data.suggestions ?? [],
       };
-      if (!res.ok) throw new Error(data.error || "SWOT failed");
-      const swot = {
-        strengths: data.strengths || [],
-        weaknesses: data.weaknesses || [],
-        opportunities: data.opportunities || [],
-        threats: data.threats || [],
-        seoScore: data.seoScore || 0,
-        summary: data.summary || "",
-      };
-      const updated = { ...article, swot };
+      const updated = { ...article, humanize };
       setArticles((p) => p.map((a) => (a.id === article.id ? updated : a)));
       setSlider((s) => (s && s !== "new" && s.id === article.id ? updated : s));
       await fetch(`/api/ai/articles/${article.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ swot }),
+        body: JSON.stringify({ humanize }),
       });
-      announce("SWOT generated");
+      announce("Humanize analysis complete");
     } catch (e) {
-      announce(e instanceof Error ? e.message : "SWOT failed");
+      if (controller.signal.aborted) return;
+      announce(e instanceof Error ? e.message : "Humanize failed");
     } finally {
-      setSwotBusy(false);
+      setHumanizeBusy(false);
     }
   }
 
@@ -265,17 +273,14 @@ export function ArticleGenerator() {
     window.setTimeout(() => setCopied(false), 2000);
   }
 
-  function downloadMd(text: string, title: string) {
-    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title.slice(0, 50)}.md`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    announce("Downloaded");
+  async function downloadAsPdf(text: string, title: string) {
+    try {
+      const doc = await buildNotePdf({ title, content: text });
+      downloadPdf(doc, `${title.slice(0, 50)}.pdf`);
+      announce("Downloaded PDF");
+    } catch {
+      announce("PDF generation failed");
+    }
   }
 
   // =================== GRID VIEW ===================
@@ -363,8 +368,10 @@ export function ArticleGenerator() {
               <p className="mt-2 line-clamp-3 flex-1 text-[11px] leading-4 text-(--crm-muted)">{snippet(article) || "No content."}</p>
               <div className="mt-3 flex items-center gap-2 border-t border-(--crm-border-soft) pt-2">
                 <span className="rounded bg-(--crm-hover) px-1.5 py-0.5 text-[10px] font-medium capitalize text-(--crm-secondary)">{article.length}</span>
-                {article.swot && (
-                  <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">SWOT {article.swot.seoScore}/100</span>
+                {article.humanize && (
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${scoreColor(article.humanize.score)}`}>
+                    {article.humanize.score}% human
+                  </span>
                 )}
                 <span className="ml-auto text-[9px] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(article.updatedAt)}</span>
               </div>
@@ -431,24 +438,65 @@ export function ArticleGenerator() {
                   <button onClick={() => setSlider(null)} className="rounded-lg p-1 text-(--crm-muted) hover:bg-(--crm-hover)"><X size={16} /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-5">
-                  {slider.swot && (
-                    <div className="mb-6 rounded-2xl border border-(--crm-border) bg-(--crm-surface) p-4">
-                      <h4 className="text-sm font-semibold">SWOT Analysis</h4>
-                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-                        <div className="rounded-xl bg-green-50 p-3"><p className="font-semibold text-green-700">Strengths</p><ul className="mt-1 space-y-1">{slider.swot.strengths.map((s, i) => <li key={i}>• {s}</li>)}</ul></div>
-                        <div className="rounded-xl bg-red-50 p-3"><p className="font-semibold text-red-700">Weaknesses</p><ul className="mt-1 space-y-1">{slider.swot.weaknesses.map((s, i) => <li key={i}>• {s}</li>)}</ul></div>
-                        <div className="rounded-xl bg-blue-50 p-3"><p className="font-semibold text-blue-700">Opportunities</p><ul className="mt-1 space-y-1">{slider.swot.opportunities.map((s, i) => <li key={i}>• {s}</li>)}</ul></div>
-                        <div className="rounded-xl bg-yellow-50 p-3"><p className="font-semibold text-yellow-700">Threats</p><ul className="mt-1 space-y-1">{slider.swot.threats.map((s, i) => <li key={i}>• {s}</li>)}</ul></div>
+                  {/* Humanize Analysis */}
+                  {slider.humanize && (
+                    <div className="mb-6 rounded-2xl border border-(--crm-border) bg-(--crm-surface) p-5">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-(--crm-fg)">Humanize Analysis</h4>
+                        <span className={`rounded-full px-3 py-1 text-sm font-bold ${scoreColor(slider.humanize.score)}`}>
+                          {slider.humanize.score}% — {slider.humanize.label}
+                        </span>
                       </div>
-                      <p className="mt-3 text-xs text-(--crm-body)">{slider.swot.summary}</p>
+
+                      {/* Main score bar */}
+                      <div className="mt-4 h-3 overflow-hidden rounded-full bg-(--crm-border-soft)">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${scoreBarColor(slider.humanize.score)}`}
+                          style={{ width: `${slider.humanize.score}%` }}
+                        />
+                      </div>
+
+                      {/* Breakdown */}
+                      {Object.keys(slider.humanize.breakdown).length > 0 && (
+                        <div className="mt-4 space-y-2.5">
+                          {Object.entries(slider.humanize.breakdown).map(([key, val]) => (
+                            <BreakdownBar key={key} label={key} value={val} />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      {slider.humanize.description && (
+                        <p className="mt-4 text-xs leading-5 text-(--crm-body)">{slider.humanize.description}</p>
+                      )}
+
+                      {/* Suggestions */}
+                      {slider.humanize.suggestions.length > 0 && (
+                        <div className="mt-3 rounded-xl bg-(--crm-panel) p-3">
+                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-(--crm-brand)">Suggestions</p>
+                          <ul className="space-y-1">
+                            {slider.humanize.suggestions.map((s, i) => (
+                              <li key={i} className="flex items-start gap-2 text-[11px] leading-4 text-(--crm-secondary)">
+                                <span className="mt-0.5 shrink-0 text-(--crm-accent)">•</span>
+                                {s}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  {/* Article Content */}
                   <pre className="whitespace-pre-wrap font-mono text-[13px] leading-6 text-(--crm-body)">{slider.content}</pre>
                 </div>
                 <div className="flex gap-2 border-t border-(--crm-border) px-6 py-4">
                   <button onClick={() => copyText(slider.content)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Copy size={14} />{copied ? "Copied" : "Copy"}</button>
-                  <button onClick={() => downloadMd(slider.content, slider.title)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Download size={14} />.md</button>
-                  <button onClick={() => void runSwot(slider)} disabled={swotBusy} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) disabled:opacity-60"><Bot size={14} />{swotBusy ? "Analyzing…" : "Run SWOT"}</button>
+                  <button onClick={() => void downloadAsPdf(slider.content, slider.title)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Download size={14} />PDF</button>
+                  <button onClick={() => void runHumanize(slider)} disabled={humanizeBusy} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) disabled:opacity-60">
+                    {humanizeBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {humanizeBusy ? "Analyzing…" : slider.humanize ? "Re-analyze" : "Humanize"}
+                  </button>
                   <div className="flex-1" />
                   <button onClick={() => setSlider(null)} className="rounded-xl border border-(--crm-border) px-4 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-hover)">Close</button>
                 </div>

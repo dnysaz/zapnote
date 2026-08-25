@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (body.title !== undefined) await sql`UPDATE articles SET title = ${body.title}, updated_at = NOW() WHERE id = ${id}`;
   if (body.content !== undefined) await sql`UPDATE articles SET content = ${body.content}, updated_at = NOW() WHERE id = ${id}`;
   if (body.keyword !== undefined) await sql`UPDATE articles SET keyword = ${body.keyword}, updated_at = NOW() WHERE id = ${id}`;
-  if (body.swot !== undefined) await sql`UPDATE articles SET swot = ${JSON.stringify(body.swot)}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+  if (body.humanize !== undefined) await sql`UPDATE articles SET humanize = ${JSON.stringify(body.humanize)}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   if (body.verified !== undefined) await sql`UPDATE articles SET verified = ${body.verified}, updated_at = NOW() WHERE id = ${id}`;
   return NextResponse.json({ ok: true });
 }
