@@ -46,7 +46,7 @@ export async function POST() {
       result JSONB NOT NULL DEFAULT '{}',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
-    await sql`INSERT INTO settings (id, data) VALUES ('site', '{"siteName":"ViNotes","theme":"emerald","geminiApiKey":""}'::jsonb) ON CONFLICT (id) DO NOTHING`;
+    await sql`INSERT INTO settings (id, data) VALUES ('site', '{"siteName":"ViNotes","theme":"emerald","geminiApiKey":"","geminiModel":"gemini-2.5-flash"}'::jsonb) ON CONFLICT (id) DO NOTHING`;
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Setup failed:", error);

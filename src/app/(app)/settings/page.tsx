@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useSettings } from "@/components/SettingsProvider";
 import { NotesShell } from "@/components/NotesShell";
-import { Check, Key, Palette, Save } from "lucide-react";
-import { THEMES, THEME_VAR_KEYS, type ThemeKey } from "@/lib/settings";
+import { Check, Key, Palette, Save, Zap } from "lucide-react";
+import { THEMES, GEMINI_MODELS, type ThemeKey, type GeminiModelId, DEFAULT_SETTINGS } from "@/lib/settings";
 
 export default function SettingsView() {
   const { settings, updateSettings, loading } = useSettings();
   const [geminiKey, setGeminiKey] = useState(settings.geminiApiKey);
+  const [geminiModel, setGeminiModel] = useState<GeminiModelId>(settings.geminiModel || DEFAULT_SETTINGS.geminiModel);
   const [siteName, setSiteName] = useState(settings.siteName);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -16,7 +17,7 @@ export default function SettingsView() {
 
   async function handleSave() {
     setSaving(true);
-    await updateSettings({ geminiApiKey: geminiKey, siteName, theme: selectedTheme });
+    await updateSettings({ geminiApiKey: geminiKey, geminiModel, siteName, theme: selectedTheme });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -69,39 +70,74 @@ export default function SettingsView() {
               </button>
             ))}
           </div>
-          {/* Preview */}
           <div className="mt-4 rounded-xl border border-(--crm-border-soft) p-4" style={{ background: THEMES[selectedTheme].soft }}>
             <p className="text-sm font-semibold" style={{ color: THEMES[selectedTheme].primary }}>Preview text</p>
             <p className="mt-1 text-xs" style={{ color: THEMES[selectedTheme].mid }}>This is how your app will look with this theme.</p>
           </div>
         </section>
 
-        {/* Gemini API Key */}
+        {/* Gemini AI Settings */}
         <section className="rounded-2xl border border-(--crm-border) bg-(--crm-panel) p-6">
           <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-(--crm-fg)">
-            <Key size={16} /> Gemini API Key
+            <Zap size={16} /> Gemini AI
           </h3>
-          <p className="mb-4 text-xs text-(--crm-muted)">
-            Required for Article Generator and SWOT Analysis. Get your key at{" "}
+          <p className="mb-5 text-xs text-(--crm-muted)">
+            Powers Article Generator and SWOT Analysis. Get your key at{" "}
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="font-semibold text-(--crm-accent) underline">
               Google AI Studio
             </a>
           </p>
-          <input
-            type="password"
-            value={geminiKey}
-            onChange={(e) => setGeminiKey(e.target.value)}
-            className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 py-2.5 text-sm font-mono text-(--crm-fg) outline-none focus:border-(--crm-accent)"
-            placeholder="AIzaSy..."
-          />
-          <div className="mt-2 flex items-center gap-2">
-            {geminiKey ? (
-              <span className="flex items-center gap-1 text-[11px] font-medium text-green-600">
-                <Check size={12} /> API key set
-              </span>
-            ) : (
-              <span className="text-[11px] font-medium text-(--crm-muted)">No API key configured</span>
-            )}
+
+          {/* API Key */}
+          <div className="mb-4">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">API Key</label>
+            <input
+              type="password"
+              value={geminiKey}
+              onChange={(e) => setGeminiKey(e.target.value)}
+              className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 py-2.5 text-sm font-mono text-(--crm-fg) outline-none focus:border-(--crm-accent)"
+              placeholder="AIzaSy..."
+            />
+            <div className="mt-2 flex items-center gap-2">
+              {geminiKey ? (
+                <span className="flex items-center gap-1 text-[11px] font-medium text-green-600">
+                  <Check size={12} /> API key set
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium text-(--crm-muted)">No API key configured</span>
+              )}
+            </div>
+          </div>
+
+          {/* Model Selector */}
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Model</label>
+            <div className="space-y-2">
+              {GEMINI_MODELS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setGeminiModel(m.id)}
+                  className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-all ${
+                    geminiModel === m.id
+                      ? "border-(--crm-accent) bg-(--crm-soft)"
+                      : "border-transparent hover:bg-(--crm-hover)"
+                  }`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-(--crm-fg)">{m.label}</p>
+                    <p className="text-[11px] text-(--crm-muted)">{m.id}</p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
+                    m.speed === "Smartest" ? "bg-purple-100 text-purple-700"
+                    : m.speed === "Fastest" ? "bg-green-100 text-green-700"
+                    : m.speed === "Smart" ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {m.speed}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 
