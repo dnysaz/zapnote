@@ -16,5 +16,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     if (!note) return NextResponse.json({ error: "Note not found" }, { status: 404 });
     return NextResponse.json({ docType: "note", doc: rowToNote(note) });
   }
+  if (share.doc_type === "article") {
+    const articleRows = await query<{ id: string; title: string; content: string }>`SELECT id, title, content FROM articles WHERE id = ${share.doc_id}`;
+    const article = articleRows[0];
+    if (!article) return NextResponse.json({ error: "Article not found" }, { status: 404 });
+    return NextResponse.json({ docType: "article", doc: article });
+  }
   return NextResponse.json({ ok: true, docType: share.doc_type });
 }

@@ -11,12 +11,14 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Share2,
   Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import { NotesShell } from "@/components/NotesShell";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { ArticleShareModal } from "@/components/ArticleShareModal";
 import type { ArticleLength, ArticleStyle } from "@/lib/prompts";
 import { buildNotePdf, downloadPdf } from "@/lib/pdf";
 import { formatDate, uid } from "@/lib/crm";
@@ -125,6 +127,7 @@ export function ArticleGenerator() {
   const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Article | null>(null);
   const [toast, setToast] = useState("");
+  const [shareArticle, setShareArticle] = useState<Article | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -497,6 +500,7 @@ export function ArticleGenerator() {
                     {humanizeBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                     {humanizeBusy ? "Analyzing…" : slider.humanize ? "Re-analyze" : "Humanize"}
                   </button>
+                  <button onClick={() => setShareArticle(slider)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Share2 size={14} />Share</button>
                   <div className="flex-1" />
                   <button onClick={() => setSlider(null)} className="rounded-xl border border-(--crm-border) px-4 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-hover)">Close</button>
                 </div>
@@ -512,6 +516,13 @@ export function ArticleGenerator() {
           message="This cannot be undone."
           onClose={() => setConfirmDelete(null)}
           onConfirm={() => void deleteArticle(confirmDelete)}
+        />
+      )}
+      {shareArticle && (
+        <ArticleShareModal
+          articleId={shareArticle.id}
+          articleTitle={shareArticle.title}
+          onClose={() => setShareArticle(null)}
         />
       )}
       {toast && <div className="fixed bottom-5 left-1/2 z-[80] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
