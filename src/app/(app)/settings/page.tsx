@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettings } from "@/components/SettingsProvider";
 import { NotesShell } from "@/components/NotesShell";
-import { Check, CheckCircle2, Key, Loader2, Palette, Save, XCircle, Zap } from "lucide-react";
+import { Check, CheckCircle2, Eye, EyeOff, Key, Loader2, Lock, Palette, Save, UserRound, XCircle, Zap } from "lucide-react";
 import { THEMES, GEMINI_MODELS, FONT_SIZES, type ThemeKey, type GeminiModelId, type FontSize, DEFAULT_SETTINGS } from "@/lib/settings";
 
 type ModelStatus = "idle" | "testing" | "ok" | "fail";
@@ -17,6 +17,29 @@ export default function SettingsView() {
   const [saved, setSaved] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>(settings.theme);
   const [fontSize, setFontSize] = useState<FontSize>(settings.fontSize || "medium");
+
+  // Account profile
+  const [accountName, setAccountName] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [accountSaved, setAccountSaved] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/account")
+      .then((r) => r.json())
+      .then((d: { name?: string; email?: string }) => {
+        if (d.name !== undefined) setAccountName(d.name);
+        if (d.email !== undefined) { setAccountEmail(d.email); setNewEmail(d.email); }
+      })
+      .catch(() => {});
+  }, []);
 
   // Model test states
   const [modelStatuses, setModelStatuses] = useState<Record<string, ModelStatus>>({});
@@ -75,6 +98,48 @@ export default function SettingsView() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleAccountSave() {
+    setAccountError("");
+    setAccountSaved(false);
+
+    // Validate password change
+    if (newPassword || confirmPassword) {
+      if (!currentPassword) { setAccountError("Current password is required to change password."); return; }
+      if (newPassword.length < 8) { setAccountError("New password must be at least 8 characters."); return; }
+      if (newPassword !== confirmPassword) { setAccountError("New passwords do not match."); return; }
+    }
+
+    // Validate email change
+    if (newEmail.trim().toLowerCase() !== accountEmail && !currentPassword) {
+      setAccountError("Current password is required to change email."); return;
+    }
+
+    setAccountSaving(true);
+    try {
+      const res = await fetch("/api/auth/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: accountName,
+          ...(newPassword ? { currentPassword, newPassword } : {}),
+          ...(newEmail.trim().toLowerCase() !== accountEmail ? { newEmail: newEmail.trim().toLowerCase(), currentPassword } : {}),
+        }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error || "Failed to update account.");
+      setAccountSaved(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      if (newEmail.trim().toLowerCase() !== accountEmail) setAccountEmail(newEmail.trim().toLowerCase());
+      setTimeout(() => setAccountSaved(false), 2500);
+    } catch (e) {
+      setAccountError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setAccountSaving(false);
+    }
   }
 
   function handleTestKey() {
@@ -240,6 +305,104 @@ export default function SettingsView() {
                 );
               })}
             </div>
+          </div>
+        </section>
+
+        {/* Account Profile */}
+        <section className="rounded-2xl border border-(--crm-border) bg-(--crm-panel) p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-(--crm-fg)">
+            <UserRound size={16} /> Account Profile
+          </h3>
+
+          <div className="space-y-4">
+            {/* Name */}
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Name</label>
+              <input
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                className="h-10 w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
+                placeholder="Your name"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Email</label>
+              <input
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="h-10 w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
+                placeholder="name@email.com"
+                type="email"
+              />
+              {newEmail.trim().toLowerCase() !== accountEmail && (
+                <p className="mt-1 text-[11px] text-orange-600">Changing email requires current password below.</p>
+              )}
+            </div>
+
+            {/* Current Password */}
+            <div>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Current Password</label>
+              <div className="relative">
+                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-(--crm-secondary)" />
+                <input
+                  type={showCurrentPw ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) pl-10 pr-10 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
+                  placeholder="Required to change email or password"
+                />
+                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-(--crm-secondary) hover:text-(--crm-text)">
+                  {showCurrentPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">New Password</label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-(--crm-secondary)" />
+                  <input
+                    type={showNewPw ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) pl-10 pr-10 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
+                    placeholder="Min. 8 characters"
+                  />
+                  <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-(--crm-secondary) hover:text-(--crm-text)">
+                    {showNewPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Confirm Password</label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-(--crm-secondary)" />
+                  <input
+                    type={showNewPw ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) pl-10 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
+                    placeholder="Repeat new password"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {accountError && <p className="rounded-xl bg-(--crm-danger-bg) px-4 py-3 text-xs font-medium text-(--crm-danger)">{accountError}</p>}
+
+            <button
+              onClick={handleAccountSave}
+              disabled={accountSaving}
+              className="flex items-center gap-2 rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-5 py-2.5 text-sm font-semibold text-(--crm-brand) transition-colors hover:bg-(--crm-hover) disabled:opacity-50"
+            >
+              <UserRound size={15} />
+              {accountSaving ? "Saving…" : accountSaved ? "Saved!" : "Update Account"}
+            </button>
+            {accountSaved && <span className="text-xs font-medium text-green-600">Account updated successfully!</span>}
           </div>
         </section>
 
