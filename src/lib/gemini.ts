@@ -1,3 +1,5 @@
+import { query } from "@/lib/db";
+
 const GEMINI_MODELS = (process.env.GEMINI_MODEL || "gemini-2.5-flash,gemini-2.0-flash,gemini-1.5-flash")
   .split(",")
   .map((m) => m.trim())
@@ -6,8 +8,15 @@ const GEMINI_MODELS = (process.env.GEMINI_MODEL || "gemini-2.5-flash,gemini-2.0-
 const GEMINI_ENDPOINT = (apiKey: string, model: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-export function getGeminiApiKey(): string {
-  return process.env.GEMINI_API_KEY || "";
+/** Get Gemini API key: first from .env, then from settings DB. */
+export async function getGeminiApiKey(): Promise<string> {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+  try {
+    const rows = await query<{ data: Record<string, unknown> }>`SELECT data FROM settings WHERE id = 'site' LIMIT 1`;
+    const key = rows[0]?.data?.geminiApiKey;
+    if (typeof key === "string" && key.trim()) return key.trim();
+  } catch { /* db not ready */ }
+  return "";
 }
 
 export interface GeminiCallOptions {
@@ -18,8 +27,8 @@ export interface GeminiCallOptions {
 }
 
 export async function callGemini(options: GeminiCallOptions): Promise<string> {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured. Add it in .env.local");
+  const apiKey = await getGeminiApiKey();
+  if (!apiKey) throw new Error("Gemini API key is not configured. Go to Settings to add it.");
 
   let lastError = "";
   let lastStatus = 0;

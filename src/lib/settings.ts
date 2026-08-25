@@ -104,11 +104,13 @@ export const THEMES = {
 export interface SiteSettings {
   siteName: string;
   theme: ThemeKey;
+  geminiApiKey: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
   siteName: "ViNotes",
   theme: "emerald",
+  geminiApiKey: "",
 };
 
 export const SETTINGS_ROW_ID = "site";

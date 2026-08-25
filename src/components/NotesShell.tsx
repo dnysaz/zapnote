@@ -5,12 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useSettings } from "@/components/SettingsProvider";
-import { Bot, Globe, LogOut, NotebookPen, PenLine } from "lucide-react";
+import { Bot, Globe, LogOut, NotebookPen, PenLine, Settings } from "lucide-react";
 
 const navItems = [
   { label: "Notes", href: "/notes", icon: NotebookPen },
   { label: "Articles", href: "/articles", icon: PenLine, authOnly: true },
   { label: "SWOT Analysis", href: "/swot", icon: Bot, authOnly: true },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function NotesShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
