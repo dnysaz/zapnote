@@ -203,10 +203,7 @@ export default function SettingsView() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                        m.speed === "Newest" ? "bg-orange-100 text-orange-700"
-                        : m.speed === "Smartest" ? "bg-purple-100 text-purple-700"
-                        : m.speed === "Fastest" ? "bg-green-100 text-green-700"
-                        : m.speed === "Smart" ? "bg-blue-100 text-blue-700"
+                        m.speed === "Fastest" ? "bg-green-100 text-green-700"
                         : "bg-gray-100 text-gray-600"
                       }`}>
                         {m.speed}
