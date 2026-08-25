@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { DEFAULT_SETTINGS, FONT_SIZES, type SiteSettings } from "@/lib/settings";
+import { DEFAULT_SETTINGS, FONT_SIZES, THEMES, THEME_VAR_KEYS, type SiteSettings } from "@/lib/settings";
 
 type SettingsContextValue = {
   settings: SiteSettings;
@@ -15,6 +15,16 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
+
+  // Apply theme colors to CSS variables
+  useEffect(() => {
+    const theme = THEMES[settings.theme];
+    if (!theme) return;
+    const root = document.documentElement;
+    for (const key of THEME_VAR_KEYS) {
+      root.style.setProperty(`--crm-${key}`, theme[key]);
+    }
+  }, [settings.theme]);
 
   // Apply font size to document
   useEffect(() => {
