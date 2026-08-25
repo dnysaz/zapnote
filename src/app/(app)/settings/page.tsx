@@ -169,7 +169,17 @@ export default function SettingsView() {
             {Object.entries(THEMES).map(([key, theme]) => (
               <button
                 key={key}
-                onClick={() => setSelectedTheme(key as ThemeKey)}
+                onClick={() => {
+                  setSelectedTheme(key as ThemeKey);
+                  // Apply theme immediately
+                  const colors = THEMES[key as ThemeKey];
+                  if (colors) {
+                    const root = document.documentElement;
+                    for (const k of Object.keys(colors) as Array<keyof typeof colors>) {
+                      if (k !== "label") root.style.setProperty(`--crm-${k}`, colors[k]);
+                    }
+                  }
+                }}
                 className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
                   selectedTheme === key ? "border-(--crm-accent) bg-(--crm-soft)" : "border-transparent hover:bg-(--crm-hover)"
                 }`}
@@ -196,7 +206,11 @@ export default function SettingsView() {
             {FONT_SIZES.map((fs) => (
               <button
                 key={fs.key}
-                onClick={() => setFontSize(fs.key)}
+                onClick={() => {
+                  setFontSize(fs.key);
+                  // Apply immediately
+                  document.documentElement.style.setProperty("--vn-scale", String(fs.scale));
+                }}
                 className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
                   fontSize === fs.key ? "border-(--crm-accent) bg-(--crm-soft)" : "border-transparent hover:bg-(--crm-hover)"
                 }`}
