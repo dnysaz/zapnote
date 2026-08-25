@@ -110,11 +110,11 @@ export type GeminiModelId = (typeof GEMINI_MODELS)[number]["id"];
 
 export type FontSize = "small" | "medium" | "large" | "xl";
 
-export const FONT_SIZES: { key: FontSize; label: string; size: string }[] = [
-  { key: "small", label: "Small", size: "14px" },
-  { key: "medium", label: "Medium", size: "16px" },
-  { key: "large", label: "Large", size: "18px" },
-  { key: "xl", label: "Extra Large", size: "20px" },
+export const FONT_SIZES: { key: FontSize; label: string; scale: number }[] = [
+  { key: "small", label: "Small", scale: 0.875 },
+  { key: "medium", label: "Medium", scale: 1 },
+  { key: "large", label: "Large", scale: 1.15 },
+  { key: "xl", label: "Extra Large", scale: 1.3 },
 ];
 
 export interface SiteSettings {

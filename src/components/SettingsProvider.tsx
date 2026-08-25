@@ -26,12 +26,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [settings.theme]);
 
-  // Apply font size to document
+  // Apply font size scaling to document
   useEffect(() => {
     const fontSize = settings.fontSize || "medium";
-    const size = FONT_SIZES.find((f) => f.key === fontSize)?.size || "16px";
-    document.documentElement.style.setProperty("--vn-font-size", size);
-    document.documentElement.style.fontSize = size;
+    const found = FONT_SIZES.find((f) => f.key === fontSize);
+    const scale = found?.scale ?? 1;
+    document.documentElement.style.setProperty("--vn-scale", String(scale));
   }, [settings.fontSize]);
 
   useEffect(() => {

@@ -201,9 +201,9 @@ export default function SettingsView() {
                   fontSize === fs.key ? "border-(--crm-accent) bg-(--crm-soft)" : "border-transparent hover:bg-(--crm-hover)"
                 }`}
               >
-                <span style={{ fontSize: fs.size }} className="font-semibold text-(--crm-fg)">Aa</span>
+                <span style={{ fontSize: `${fs.scale * 16}px` }} className="font-semibold text-(--crm-fg)">Aa</span>
                 <span className="text-[11px] font-semibold text-(--crm-secondary)">{fs.label}</span>
-                <span className="text-[10px] text-(--crm-muted)">{fs.size}</span>
+                <span className="text-[10px] text-(--crm-muted)">{Math.round(fs.scale * 100)}%</span>
               </button>
             ))}
           </div>
