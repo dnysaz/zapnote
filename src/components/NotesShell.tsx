@@ -46,6 +46,10 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
 
   const visibleNav = navItems.filter((item) => !item.authOnly || !isGuest);
 
+  // Sidebar width in rem — scales with root font-size via --vn-scale
+  const sidebarWidth = compact ? "4.5rem" : "14rem";
+  const sidebarPadX = compact ? "0.75rem" : "1.25rem";
+
   return (
     <div className="min-h-screen bg-(--crm-bg) font-[var(--font-dm)] text-(--crm-fg)">
       <style>{`
@@ -54,7 +58,10 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
       `}</style>
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className={`${mobileNav ? "fixed inset-0 z-40 flex" : "hidden"} shrink-0 flex-col border-r border-(--crm-border) bg-(--crm-dark) px-5 py-6 text-(--crm-faint) md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto ${minimized ? "md:w-[76px] md:px-3" : "md:w-[220px] md:px-4"} ${mounted ? "transition-[width] duration-300" : ""}`}>
+        <aside
+          style={{ width: sidebarWidth, paddingLeft: sidebarPadX, paddingRight: sidebarPadX }}
+          className={`${mobileNav ? "fixed inset-0 z-40 flex" : "hidden"} shrink-0 flex-col border-r border-(--crm-border) bg-(--crm-dark) py-6 text-(--crm-faint) md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto ${mounted ? "transition-[width,padding] duration-300" : ""}`}
+        >
           {/* Logo */}
           <div className={`flex items-center justify-between px-2 ${minimized ? "mb-8" : "mb-10"}`}>
             <button type="button" onClick={() => setMinimized((prev) => !prev)} title={minimized ? "Expand sidebar" : "Minimize sidebar"} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
