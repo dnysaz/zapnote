@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import { query } from "@/lib/db";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 
@@ -26,38 +25,57 @@ export interface GeminiCallOptions {
   maxOutputTokens?: number;
 }
 
-const FALLBACK_MODELS = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
+const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.7-flash"]; // 3.6-flash removed: returns empty
+
+async function callGeminiDirect(apiKey: string, model: string, options: GeminiCallOptions): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const body = {
+    system_instruction: { parts: [{ text: options.systemPrompt }] },
+    contents: [{ parts: [{ text: options.userPrompt }] }],
+    generationConfig: {
+      temperature: options.temperature ?? 0.7,
+      maxOutputTokens: options.maxOutputTokens ?? 8192,
+      thinkingConfig: { thinkingBudget: 0 },
+    },
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json() as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  return text.trim();
+}
 
 export async function callGemini(options: GeminiCallOptions): Promise<string> {
   const { apiKey, model } = await getSettings();
   if (!apiKey) throw new Error("Gemini API key is not configured. Go to Settings to add it.");
 
-  const ai = new GoogleGenAI({ apiKey });
-
   // Build ordered list: primary model first, then fallbacks (skip duplicates)
   const models = [model, ...FALLBACK_MODELS.filter((m) => m !== model)];
 
-  let lastError: string = "";
+  let lastError = "";
   for (const m of models) {
     try {
-      const response = await ai.models.generateContent({
-        model: m,
-        contents: options.userPrompt,
-        config: {
-          systemInstruction: options.systemPrompt,
-          temperature: options.temperature ?? 0.7,
-          maxOutputTokens: options.maxOutputTokens ?? 8192,
-        },
-      });
-      const text = response.text;
-      if (text && text.trim()) return text.trim();
-      lastError = `Model ${m} returned empty response`;
+      const text = await callGeminiDirect(apiKey, m, options);
+      if (text) return text;
+      lastError = `${m}: empty response`;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       lastError = `${m}: ${msg.slice(0, 120)}`;
-      // If quota/permission error, try next model; if auth error, stop
       if (msg.includes("API_KEY_INVALID") || msg.includes("PERMISSION_DENIED")) {
-        throw new Error(`Invalid API key. Please check your Gemini API key in Settings.`);
+        throw new Error("Invalid API key. Please check your Gemini API key in Settings.");
       }
     }
   }

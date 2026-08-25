@@ -460,7 +460,7 @@ export function ArticleGenerator() {
                       </div>
 
                       {/* Breakdown */}
-                      {Object.keys(slider.humanize.breakdown).length > 0 && (
+                      {slider.humanize.breakdown && Object.keys(slider.humanize.breakdown).length > 0 && (
                         <div className="mt-4 space-y-2.5">
                           {Object.entries(slider.humanize.breakdown).map(([key, val]) => (
                             <BreakdownBar key={key} label={key} value={val} />
@@ -474,7 +474,7 @@ export function ArticleGenerator() {
                       )}
 
                       {/* Suggestions */}
-                      {slider.humanize.suggestions.length > 0 && (
+                      {slider.humanize.suggestions && slider.humanize.suggestions.length > 0 && (
                         <div className="mt-3 rounded-xl bg-(--crm-panel) p-3">
                           <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-(--crm-brand)">Suggestions</p>
                           <ul className="space-y-1">

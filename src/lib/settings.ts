@@ -102,9 +102,8 @@ export const THEMES = {
 } as const satisfies Record<string, ThemeColors & { label: string }>;
 
 export const GEMINI_MODELS = [
-  { id: "gemini-3.7-flash", label: "Gemini 3.7 Flash", speed: "Fastest" },
-  { id: "gemini-3.6-flash", label: "Gemini 3.6 Flash", speed: "Fast" },
-  { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash", speed: "Fast" },
+  { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash", speed: "Fastest" },
+  { id: "gemini-3.7-flash", label: "Gemini 3.7 Flash", speed: "Smart" },
 ] as const;
 
 export type GeminiModelId = (typeof GEMINI_MODELS)[number]["id"];
@@ -120,7 +119,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   siteName: "ViNotes",
   theme: "emerald",
   geminiApiKey: "",
-  geminiModel: "gemini-3.7-flash" as const,
+  geminiModel: "gemini-3.5-flash" as const,
 };
 
 export const SETTINGS_ROW_ID = "site";
