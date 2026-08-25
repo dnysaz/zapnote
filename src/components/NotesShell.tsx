@@ -29,6 +29,7 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
   const pathname = usePathname();
   const { session, logout } = useAuth();
   const { settings } = useSettings();
+  const logoLetter = (settings.siteName || "V").charAt(0).toUpperCase();
   const isGuest = session.status === "anonymous";
   const email = session.status === "authed" ? session.email : "";
   const name = session.status === "authed" && (session as { name?: string }).name ? (session as { name?: string }).name : email;
@@ -57,7 +58,7 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
           {/* Logo */}
           <div className={`flex items-center justify-between px-2 ${minimized ? "mb-8" : "mb-10"}`}>
             <button type="button" onClick={() => setMinimized((prev) => !prev)} title={minimized ? "Expand sidebar" : "Minimize sidebar"} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--crm-accent) font-[var(--font-space-mono)] text-sm font-bold text-(--crm-dark)">V</div>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--crm-accent) font-[var(--font-space-mono)] text-sm font-bold text-(--crm-dark)">{logoLetter}</div>
               {!compact && <span className="block truncate text-[17px] font-semibold leading-tight tracking-[-.03em] text-white">{settings.siteName}</span>}
             </button>
             <button className="shrink-0 md:hidden" onClick={() => setMobileNav(false)} aria-label="Close navigation"><X size={20} /></button>
