@@ -66,13 +66,13 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
           <div className={`flex items-center justify-between px-2 ${minimized ? "mb-8" : "mb-10"}`}>
             <button type="button" onClick={() => setMinimized((prev) => !prev)} title={minimized ? "Expand sidebar" : "Minimize sidebar"} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-(--crm-accent) font-[var(--font-space-mono)] text-sm font-bold text-(--crm-dark)">{logoLetter}</div>
-              {!compact && <span className="block truncate text-[17px] font-semibold leading-tight tracking-[-.03em] text-white">{settings.siteName}</span>}
+              {!compact && <span className="block truncate text-[1.0625rem] font-semibold leading-tight tracking-[-.03em] text-white">{settings.siteName}</span>}
             </button>
             <button className="shrink-0 md:hidden" onClick={() => setMobileNav(false)} aria-label="Close navigation"><X size={20} /></button>
           </div>
 
           {/* Workspace label */}
-          {!compact && <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[.18em] text-(--crm-faint)">Workspace</p>}
+          {!compact && <p className="mb-3 px-2 text-[0.63rem] font-semibold uppercase tracking-[.18em] text-(--crm-faint)">Workspace</p>}
 
           {/* Nav items */}
           <nav className="space-y-1">
@@ -84,7 +84,7 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
           </nav>
 
           {/* Manage section */}
-          {!compact && <p className="mb-3 mt-8 px-2 text-[10px] font-semibold uppercase tracking-[.18em] text-(--crm-faint)">Manage</p>}
+          {!compact && <p className="mb-3 mt-8 px-2 text-[0.63rem] font-semibold uppercase tracking-[.18em] text-(--crm-faint)">Manage</p>}
           <nav className="space-y-1">
             <Link href="/settings" title="Settings" onClick={() => setMobileNav(false)} className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${compact ? "justify-center px-2" : "px-3 text-left"} ${pathname === "/settings" ? "bg-(--crm-active) text-white" : "text-(--crm-faint) hover:bg-(--crm-darker) hover:text-white"}`}>
               <Settings size={17} className="shrink-0" />{!compact && "Settings"}
@@ -96,7 +96,7 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
             {!compact && isGuest && (
               <div className="mb-3 flex items-center gap-2 rounded-lg border border-dashed border-(--crm-faint) px-3 py-2">
                 <Globe size={13} className="shrink-0 text-(--crm-faint)" />
-                <span className="text-[11px] font-semibold text-(--crm-faint)">Guest Mode</span>
+                <span className="text-[0.69rem] font-semibold text-(--crm-faint)">Guest Mode</span>
               </div>
             )}
             <button onClick={logout} className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${compact ? "justify-center px-2" : "px-3 text-left"} text-(--crm-faint) hover:bg-(--crm-darker) hover:text-white`} title={isGuest ? "Exit guest mode" : "Logout"}>
@@ -111,12 +111,12 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
             <div className="flex items-center gap-3">
               <button className="rounded-lg p-2 hover:bg-(--crm-hover) md:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu size={20} /></button>
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[.16em] text-(--crm-muted)">{subtitle}</p>
+                <p className="text-[0.69rem] font-medium uppercase tracking-[.16em] text-(--crm-muted)">{subtitle}</p>
                 <h1 className="mt-0.5 text-xl font-semibold tracking-[-.03em]">{title}</h1>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {isGuest && <span className="flex items-center gap-1 rounded-full border border-dashed border-(--crm-border) bg-(--crm-hover) px-2.5 py-1 text-[11px] font-semibold text-(--crm-muted)"><Globe size={12} />Guest</span>}
+              {isGuest && <span className="flex items-center gap-1 rounded-full border border-dashed border-(--crm-border) bg-(--crm-hover) px-2.5 py-1 text-[0.69rem] font-semibold text-(--crm-muted)"><Globe size={12} />Guest</span>}
               <div className="h-6 w-px bg-(--crm-border)" />
               <div className="flex items-center gap-2">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-(--crm-soft) text-xs font-bold text-(--crm-fg)">{initials}</span>

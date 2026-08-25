@@ -64,7 +64,7 @@ const areaCls =
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">
+    <span className="mb-1.5 block text-[0.69rem] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">
       {children}
     </span>
   );
@@ -92,11 +92,11 @@ function scoreBarColor(score: number): string {
 function BreakdownBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-24 shrink-0 text-[11px] font-medium capitalize text-(--crm-secondary)">{label}</span>
+      <span className="w-24 shrink-0 text-[0.69rem] font-medium capitalize text-(--crm-secondary)">{label}</span>
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-(--crm-border-soft)">
         <div className={`h-full rounded-full transition-all duration-500 ${scoreBarColor(value)}`} style={{ width: `${value}%` }} />
       </div>
-      <span className="w-8 shrink-0 text-right text-[11px] font-semibold text-(--crm-fg)">{value}</span>
+      <span className="w-8 shrink-0 text-right text-[0.69rem] font-semibold text-(--crm-fg)">{value}</span>
     </div>
   );
 }
@@ -291,7 +291,7 @@ export function ArticleGenerator() {
     <NotesShell title="Articles" subtitle="AI content creation">
       <div className="vn-rise flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h2 className="text-[26px] font-semibold tracking-[-.04em]">Articles</h2>
+          <h2 className="text-[1.625rem] font-semibold tracking-[-.04em]">Articles</h2>
           <p className="mt-1 text-sm text-(--crm-secondary)">
             {query.length >= 3
               ? `${visibleArticles.length} ${visibleArticles.length === 1 ? "match" : "matches"} for "${query}"`
@@ -368,15 +368,15 @@ export function ArticleGenerator() {
                 </button>
               </div>
               <p className="mt-3 line-clamp-2 text-sm font-semibold leading-4 text-(--crm-fg)">{article.title}</p>
-              <p className="mt-2 line-clamp-3 flex-1 text-[11px] leading-4 text-(--crm-muted)">{snippet(article) || "No content."}</p>
+              <p className="mt-2 line-clamp-3 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(article) || "No content."}</p>
               <div className="mt-3 flex items-center gap-2 border-t border-(--crm-border-soft) pt-2">
-                <span className="rounded bg-(--crm-hover) px-1.5 py-0.5 text-[10px] font-medium capitalize text-(--crm-secondary)">{article.length}</span>
+                <span className="rounded bg-(--crm-hover) px-1.5 py-0.5 text-[0.63rem] font-medium capitalize text-(--crm-secondary)">{article.length}</span>
                 {article.humanize && (
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${scoreColor(article.humanize.score)}`}>
+                  <span className={`rounded px-1.5 py-0.5 text-[0.63rem] font-semibold ${scoreColor(article.humanize.score)}`}>
                     {article.humanize.score}% human
                   </span>
                 )}
-                <span className="ml-auto text-[9px] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(article.updatedAt)}</span>
+                <span className="ml-auto text-[0.56rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(article.updatedAt)}</span>
               </div>
             </div>
           ))}
@@ -476,10 +476,10 @@ export function ArticleGenerator() {
                       {/* Suggestions */}
                       {slider.humanize.suggestions && slider.humanize.suggestions.length > 0 && (
                         <div className="mt-3 rounded-xl bg-(--crm-panel) p-3">
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-(--crm-brand)">Suggestions</p>
+                          <p className="mb-1.5 text-[0.69rem] font-semibold uppercase tracking-[.06em] text-(--crm-brand)">Suggestions</p>
                           <ul className="space-y-1">
                             {slider.humanize.suggestions.map((s, i) => (
-                              <li key={i} className="flex items-start gap-2 text-[11px] leading-4 text-(--crm-secondary)">
+                              <li key={i} className="flex items-start gap-2 text-[0.69rem] leading-4 text-(--crm-secondary)">
                                 <span className="mt-0.5 shrink-0 text-(--crm-accent)">•</span>
                                 {s}
                               </li>
@@ -491,7 +491,7 @@ export function ArticleGenerator() {
                   )}
 
                   {/* Article Content */}
-                  <pre className="whitespace-pre-wrap font-mono text-[13px] leading-6 text-(--crm-body)">{slider.content}</pre>
+                  <pre className="whitespace-pre-wrap font-mono text-sm leading-6 text-(--crm-body)">{slider.content}</pre>
                 </div>
                 <div className="flex gap-2 border-t border-(--crm-border) px-6 py-4">
                   <button onClick={() => copyText(slider.content)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Copy size={14} />{copied ? "Copied" : "Copy"}</button>

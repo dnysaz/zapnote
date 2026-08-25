@@ -197,7 +197,7 @@ export function SwotAnalysis() {
     <NotesShell title="SWOT Analysis" subtitle="Content strategy">
       <div className="vn-rise flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h2 className="text-[26px] font-semibold tracking-[-.04em]">SWOT Analysis</h2>
+          <h2 className="text-[1.625rem] font-semibold tracking-[-.04em]">SWOT Analysis</h2>
           <p className="mt-1 text-sm text-(--crm-secondary)">
             {query.length >= 3
               ? `${visible.length} ${visible.length === 1 ? "match" : "matches"} for "${query}"`
@@ -274,12 +274,12 @@ export function SwotAnalysis() {
                 </button>
               </div>
               <p className="mt-3 line-clamp-2 text-sm font-semibold leading-4 text-(--crm-fg)">{a.title}</p>
-              <p className="mt-2 line-clamp-3 flex-1 text-[11px] leading-4 text-(--crm-muted)">{snippet(a.summary) || "No summary."}</p>
+              <p className="mt-2 line-clamp-3 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(a.summary) || "No summary."}</p>
               <div className="mt-3 flex items-center gap-2 border-t border-(--crm-border-soft) pt-2">
-                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${a.seoScore >= 70 ? "bg-green-50 text-green-700" : a.seoScore >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>
+                <span className={`rounded px-1.5 py-0.5 text-[0.63rem] font-bold ${a.seoScore >= 70 ? "bg-green-50 text-green-700" : a.seoScore >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>
                   SEO {a.seoScore}/100
                 </span>
-                <span className="ml-auto text-[9px] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(a.createdAt)}</span>
+                <span className="ml-auto text-[0.56rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(a.createdAt)}</span>
               </div>
             </div>
           ))}
@@ -301,7 +301,7 @@ export function SwotAnalysis() {
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
                   <div>
-                    <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Title (optional)</span>
+                    <span className="mb-1.5 block text-[0.69rem] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Title (optional)</span>
                     <input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -310,13 +310,13 @@ export function SwotAnalysis() {
                     />
                   </div>
                   <div>
-                    <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Article Content *</span>
+                    <span className="mb-1.5 block text-[0.69rem] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Article Content *</span>
                     <textarea
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       rows={16}
                       placeholder="Paste your article text here…"
-                      className={`${areaCls} font-mono text-[13px]`}
+                      className={`${areaCls} font-mono text-sm`}
                     />
                   </div>
                   {error && <p className="rounded-xl bg-(--crm-danger-bg) px-4 py-3 text-xs font-medium text-(--crm-danger)">{error}</p>}
@@ -369,8 +369,8 @@ export function SwotAnalysis() {
 
                   {/* Source content */}
                   <div>
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Source Article</p>
-                    <pre className="whitespace-pre-wrap rounded-xl border border-(--crm-border) bg-(--crm-surface) p-4 font-mono text-[12px] leading-5 text-(--crm-body) max-h-[30vh] overflow-y-auto">{slider.sourceContent}</pre>
+                    <p className="mb-2 text-[0.69rem] font-semibold uppercase tracking-[.08em] text-(--crm-brand)">Source Article</p>
+                    <pre className="whitespace-pre-wrap rounded-xl border border-(--crm-border) bg-(--crm-surface) p-4 font-mono text-xs leading-5 text-(--crm-body) max-h-[30vh] overflow-y-auto">{slider.sourceContent}</pre>
                   </div>
                 </div>
                 <div className="flex gap-2 border-t border-(--crm-border) px-6 py-4">

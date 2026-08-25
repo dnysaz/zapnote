@@ -492,7 +492,7 @@ export function NotesView() {
     <NotesShell title="Notes" subtitle="Project notes">
       <div className="crm-rise flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <h2 className="text-[26px] font-semibold tracking-[-.04em]">Project notes</h2>
+          <h2 className="text-[1.625rem] font-semibold tracking-[-.04em]">Project notes</h2>
           <p className="mt-1 text-sm text-(--crm-secondary)">{query.length >= 3 ? `${visibleNotes.length} ${visibleNotes.length === 1 ? "match" : "matches"} for "${query}"` : `${sortedNotes.length} ${sortedNotes.length === 1 ? "note" : "notes"} to manage your projects.`}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -525,8 +525,8 @@ export function NotesView() {
                 <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete note"><Trash2 size={13} /></button>
               </div>
               <div className="my-2.5 h-px bg-(--crm-border-soft)" />
-              <p className="line-clamp-4 flex-1 text-[11px] leading-4 text-(--crm-muted)">{snippet(note) || "No content yet."}</p>
-              <p className="mt-2.5 border-t border-(--crm-border-soft) pt-2 text-[9px] font-medium uppercase tracking-[.1em] text-(--crm-faint)">Updated {formatDate(note.updatedAt)}</p>
+              <p className="line-clamp-4 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(note) || "No content yet."}</p>
+              <p className="mt-2.5 border-t border-(--crm-border-soft) pt-2 text-[0.56rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">Updated {formatDate(note.updatedAt)}</p>
             </div>
           ))}
         </div>

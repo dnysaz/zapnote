@@ -91,16 +91,16 @@ export function NoteShareModal({
               <span className="text-xs text-(--crm-muted)">Creating link…</span>
             </div>
           )}
-          <p className="mt-2 text-[11px] text-(--crm-faint)">Scan to open on mobile</p>
+          <p className="mt-2 text-[0.69rem] text-(--crm-faint)">Scan to open on mobile</p>
         </div>
 
         {/* Copy link */}
         <div className="mt-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-(--crm-label)">Public link</p>
+          <p className="text-[0.63rem] font-semibold uppercase tracking-[.14em] text-(--crm-label)">Public link</p>
           <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-(--crm-border-input) bg-(--crm-surface) p-2 pl-3">
             <code className="min-w-0 flex-1 truncate font-mono text-xs text-(--crm-secondary)">{token ? shareUrl : "Creating link…"}</code>
             {token && (
-              <button onClick={copyLink} className="flex shrink-0 items-center gap-1 rounded-lg border border-(--crm-border-input) px-2.5 py-1.5 text-[11px] font-semibold text-(--crm-brand) hover:bg-(--crm-hover)">
+              <button onClick={copyLink} className="flex shrink-0 items-center gap-1 rounded-lg border border-(--crm-border-input) px-2.5 py-1.5 text-[0.69rem] font-semibold text-(--crm-brand) hover:bg-(--crm-hover)">
                 {copied ? <Check size={13} /> : <Copy size={13} />}
                 {copied ? "Copied" : "Copy"}
               </button>
