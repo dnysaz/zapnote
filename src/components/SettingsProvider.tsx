@@ -54,6 +54,8 @@ function mixWithWhite(hex: string, pct: number): string {
 export function applyTheme(theme?: string) {
   const colors = THEMES[(theme || "emerald") as keyof typeof THEMES];
   if (!colors) return;
+  // Cache in localStorage for instant load on next visit
+  try { localStorage.setItem("zapnote-theme", theme || "emerald"); } catch {}
   const root = document.documentElement;
   // Set base theme colors
   for (const key of THEME_VAR_KEYS) {
