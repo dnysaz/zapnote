@@ -374,8 +374,6 @@ export function SwotAnalysis() {
                 </div>
                 <div className="flex items-center gap-2 border-t border-(--crm-border) px-4 py-3 sm:px-6 sm:py-4">
                   <button onClick={() => copyResult(slider)} className="flex items-center gap-1.5 rounded-lg border border-(--crm-border-input) px-3 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4"><Copy size={14} />{copied ? "Copied" : "Copy result"}</button>
-                  <div className="flex-1" />
-                  <button onClick={() => setSlider(null)} className="rounded-lg border border-(--crm-border) px-3 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4">Close</button>
                 </div>
               </>
             )}

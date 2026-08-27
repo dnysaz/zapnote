@@ -523,9 +523,6 @@ export function ArticleGenerator() {
                     {humanizeBusy ? "Analyzing…" : slider.humanize ? "Re-analyze" : "Humanize"}
                   </button>
                   <button onClick={() => setShareArticle(slider)} className="flex items-center justify-center gap-1.5 rounded-lg border border-(--crm-border-input) px-3 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4"><Share2 size={14} />Share</button>
-                  <div className="col-span-2 flex items-center justify-end sm:col-span-1 sm:flex-1">
-                    <button onClick={() => setSlider(null)} className="rounded-lg border border-(--crm-border) px-3 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4">Close</button>
-                  </div>
                 </div>
               </>
             )}
