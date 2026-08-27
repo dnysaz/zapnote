@@ -626,7 +626,7 @@ export function NotesView() {
           {/* shared container for toolbar + paper */}
           <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col overflow-hidden">
           {/* ===== MINIMAL TOOLBAR ===== */}
-          <div className="flex shrink-0 flex-wrap items-center justify-center gap-1 border-b border-(--crm-border) bg-white px-1 py-1.5 sm:px-3 sm:gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center justify-center gap-1 border-b border-(--crm-border) bg-white px-1 py-1.5 sm:px-0 sm:gap-1.5">
             {/* Back */}
             <button onClick={handleBack} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Save & back"><ArrowLeft size={15} /></button>
             <div className="mx-1 h-4 w-px bg-(--crm-border)" />
@@ -684,7 +684,7 @@ export function NotesView() {
 
           {/* ===== PAPER (A4 portrait) ===== */}
           <div className="flex-1 overflow-y-auto bg-gray-100 p-0 sm:p-5">
-              <div className="flex aspect-[210/297] min-h-0 flex-col bg-white p-4 shadow-sm sm:p-8">
+              <div className="flex min-h-full flex-col bg-white p-4 shadow-sm sm:aspect-[210/297] sm:min-h-0 sm:p-8">
                 <input
                   value={editor.title}
                   onChange={(event) => updateDraft({ title: event.target.value })}
