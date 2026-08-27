@@ -615,175 +615,127 @@ export function NotesView() {
       );
     }
 
-    // ---- Normal editor (MS Word style) ----
-    const ribbonBtn = "flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)";
-    const ribbonBtnActive = "flex items-center justify-center rounded-md p-1.5 text-(--crm-brand) bg-(--crm-soft)";
-    const ribbonSep = "w-px h-5 bg-(--crm-border) mx-0.5 shrink-0";
-    const ribbonGroupLabel = "text-[0.55rem] font-medium uppercase tracking-[.08em] text-(--crm-faint) text-center";
-
+    // ---- Normal editor (inside NotesShell) ----
     return (
-      <div className="flex h-dvh flex-col overflow-hidden bg-(--crm-bg)">
+      <NotesShell title="Notes" subtitle="Project notes">
         <style>{`
           .note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }
         `}</style>
 
-        {/* ===== TITLE BAR (Word-style) ===== */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-(--crm-border) bg-white px-3 py-2 sm:px-4">
-          <button onClick={handleBack} className="flex items-center justify-center rounded-lg p-2 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Save & back"><ArrowLeft size={16} /></button>
-          <div className="min-w-0 flex-1">
-            <input
-              value={editor.title}
-              onChange={(event) => updateDraft({ title: event.target.value })}
-              placeholder="Untitled note"
-              maxLength={160}
-              className="w-full bg-transparent text-sm font-semibold text-(--crm-fg) outline-none placeholder:text-(--crm-placeholder) sm:text-base"
-            />
-          </div>
-          <span className={`hidden text-[0.65rem] font-medium text-(--crm-muted) transition-opacity sm:inline ${draftSaved ? "opacity-100" : "opacity-0"}`}>Saved</span>
-          {editor.id && !isGuest && (
-            <button onClick={handleShare} className="flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) sm:text-xs" title="Share"><Link2 size={13} /><span className="hidden sm:inline">Share</span></button>
-          )}
-          <div className="relative">
-            <button onClick={() => setSaveMenuOpen(!saveMenuOpen)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) sm:text-xs" title="Export"><FileDown size={13} /><span className="hidden sm:inline">Export</span><ChevronDown size={11} /></button>
-            {saveMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-[55]" onClick={() => setSaveMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-[56] mt-1 w-44 rounded-xl border border-(--crm-border) bg-white py-1 shadow-xl">
-                  <button onClick={downloadWord} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-(--crm-fg) hover:bg-(--crm-soft)"><FileText size={14} />Word (.docx)</button>
-                  <button onClick={downloadPdf} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-(--crm-fg) hover:bg-(--crm-soft)"><FileImage size={14} />PDF</button>
-                  <button onClick={downloadTxt} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-(--crm-fg) hover:bg-(--crm-soft)"><FileDown size={14} />Plain Text</button>
-                </div>
-              </>
+        <div className="flex flex-1 flex-col">
+          {/* ===== MINIMAL TOOLBAR (centered) ===== */}
+          <div className="flex shrink-0 items-center justify-center gap-1 border-b border-(--crm-border) bg-white px-2 py-1.5 sm:gap-1.5">
+            {/* Back */}
+            <button onClick={handleBack} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Save & back"><ArrowLeft size={15} /></button>
+            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
+            {/* Text formatting */}
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("bold")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Bold"><Bold size={15} /></button>
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("italic")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Italic"><Italic size={15} /></button>
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("underline")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Underline"><Underline size={15} /></button>
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("strikeThrough")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Strikethrough"><Strikethrough size={15} /></button>
+            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
+            {/* Lists */}
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertUnorderedList")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Bullet list"><List size={15} /></button>
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertOrderedList")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Numbered list"><ListOrdered size={15} /></button>
+            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
+            {/* History */}
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("undo")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Undo"><Undo2 size={15} /></button>
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("redo")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Redo"><Redo2 size={15} /></button>
+            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
+            {/* AI */}
+            {hasApiKey ? (
+              <button onClick={() => setAiOpen(true)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-violet-600" title="AI Assistant"><Sparkles size={15} /></button>
+            ) : (
+              <a href="/app/settings" className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint) transition-colors hover:bg-(--crm-soft)" title="Add API key in Settings"><Lock size={15} /></a>
             )}
-          </div>
-          {editor.id && (
-            <button onClick={() => setConfirmDelete({ id: editor.id!, title: editor.title })} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-muted) transition-colors hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 size={14} /></button>
-          )}
-          <button onClick={() => setFullscreen(true)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-muted) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Fullscreen"><Maximize2 size={14} /></button>
-        </div>
-
-        {/* ===== RIBBON TOOLBAR (Word-style) ===== */}
-        <div className="flex shrink-0 flex-wrap items-stretch gap-x-1 gap-y-0 border-b border-(--crm-border) bg-gray-50/80 px-2 py-1 sm:items-center sm:gap-x-1.5 sm:px-3">
-          {/* Clipboard group */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-0.5">
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("bold")} className={ribbonBtn} title="Bold (Ctrl+B)"><Bold size={15} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("italic")} className={ribbonBtn} title="Italic (Ctrl+I)"><Italic size={15} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("underline")} className={ribbonBtn} title="Underline (Ctrl+U)"><Underline size={15} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("strikeThrough")} className={ribbonBtn} title="Strikethrough"><Strikethrough size={15} /></button>
-            </div>
-            <span className={ribbonGroupLabel}>Font</span>
-          </div>
-
-          <div className={ribbonSep} />
-
-          {/* Paragraph group */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-0.5">
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertUnorderedList")} className={ribbonBtn} title="Bullet list"><List size={15} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertOrderedList")} className={ribbonBtn} title="Numbered list"><ListOrdered size={15} /></button>
-            </div>
-            <span className={ribbonGroupLabel}>List</span>
-          </div>
-
-          <div className={ribbonSep} />
-
-          {/* History group */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-0.5">
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("undo")} className={ribbonBtn} title="Undo (Ctrl+Z)"><Undo2 size={15} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("redo")} className={ribbonBtn} title="Redo (Ctrl+Y)"><Redo2 size={15} /></button>
-            </div>
-            <span className={ribbonGroupLabel}>History</span>
-          </div>
-
-          <div className={ribbonSep} />
-
-          {/* AI group */}
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-0.5">
-              {hasApiKey ? (
-                <button onClick={() => setAiOpen(true)} className="flex items-center gap-1 rounded-md bg-gradient-to-r from-violet-600 to-fuchsia-600 px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:from-violet-700 hover:to-fuchsia-700 sm:px-2.5 sm:text-xs" title="AI Assistant"><Sparkles size={13} /><span className="hidden sm:inline">AI</span></button>
-              ) : (
-                <a href="/app/settings" className="flex items-center gap-1 rounded-md border border-dashed border-violet-300 bg-violet-50 px-2 py-1.5 text-[0.65rem] font-semibold text-violet-400 sm:px-2.5 sm:text-xs"><Lock size={13} />AI</a>
-              )}
-              {hasApiKey ? (
-                <button onClick={() => void runSmart()} disabled={smartBusy} className="flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1.5 text-[0.65rem] font-semibold text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60 sm:px-2.5 sm:text-xs" title="Smart: auto tags & action items">
-                  {smartBusy ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-                  <span className="hidden sm:inline">Smart</span>
-                </button>
-              ) : (
-                <span className="flex items-center gap-1 rounded-md border border-dashed border-violet-200 bg-violet-50 px-2 py-1.5 text-[0.65rem] font-semibold text-violet-400 sm:px-2.5 sm:text-xs"><Lock size={13} /><span className="hidden sm:inline">Smart</span></span>
+            {hasApiKey ? (
+              <button onClick={() => void runSmart()} disabled={smartBusy} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-violet-600 disabled:opacity-40" title="Smart">
+                {smartBusy ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
+              </button>
+            ) : (
+              <span className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint)"><Lock size={15} /></span>
+            )}
+            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
+            {/* Actions */}
+            <button onClick={handleNewNote} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="New note"><Plus size={15} /></button>
+            {editor.id && !isGuest && (
+              <button onClick={handleShare} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Share"><Link2 size={15} /></button>
+            )}
+            <div className="relative">
+              <button onClick={() => setSaveMenuOpen(!saveMenuOpen)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Export"><FileDown size={15} /></button>
+              {saveMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-[55]" onClick={() => setSaveMenuOpen(false)} />
+                  <div className="absolute right-0 top-full z-[56] mt-1 w-40 rounded-lg border border-(--crm-border) bg-white py-1 shadow-lg">
+                    <button onClick={downloadWord} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileText size={13} />Word</button>
+                    <button onClick={downloadPdf} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileImage size={13} />PDF</button>
+                    <button onClick={downloadTxt} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileDown size={13} />Text</button>
+                  </div>
+                </>
               )}
             </div>
-            <span className={ribbonGroupLabel}>AI</span>
+            {editor.id && (
+              <button onClick={() => setConfirmDelete({ id: editor.id!, title: editor.title })} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint) transition-colors hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 size={15} /></button>
+            )}
+            <button onClick={() => setFullscreen(true)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Fullscreen"><Maximize2 size={15} /></button>
           </div>
 
-          <div className="flex-1" />
-
-          {/* Quick actions */}
-          <div className="flex items-center gap-0.5">
-            <button onClick={handleNewNote} className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[0.65rem] font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) sm:text-xs" title="New note"><Plus size={13} /><span className="hidden sm:inline">New</span></button>
-          </div>
-        </div>
-
-        {/* ===== PAPER AREA ===== */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[820px] py-4 sm:py-8">
-            <div className="mx-2 flex min-h-[60vh] flex-col bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,.08),0_8px_32px_rgba(0,0,0,.12)] sm:mx-auto sm:rounded-sm sm:border sm:border-gray-200 sm:p-10 sm:shadow-[0_2px_8px_rgba(0,0,0,.06),0_24px_56px_rgba(0,0,0,.14)]">
-              <input
-                value={editor.title}
-                onChange={(event) => updateDraft({ title: event.target.value })}
-                placeholder="Untitled note"
-                maxLength={160}
-                className="mb-2 w-full bg-transparent text-2xl font-bold tracking-[-.03em] text-gray-900 outline-none placeholder:text-gray-300 sm:text-3xl"
-              />
-              <div className="mb-4 h-px bg-gray-100 sm:mb-6" />
-              <div
-                ref={contentRef}
-                contentEditable
-                suppressContentEditableWarning
-                role="textbox"
-                aria-multiline="true"
-                data-ph="Start writing your note here…"
-                onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
-                className="note-editor min-h-[50vh] flex-1 bg-transparent text-[0.95rem] leading-7 text-gray-800 outline-none sm:text-base sm:leading-8 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
-              />
-            </div>
-          </div>
-
-          {/* Action Items (Smart) */}
-          {editingNote && actionItems.length > 0 && (
-            <div className="mx-auto max-w-[820px] px-2 pb-8 sm:px-0">
-              <div className="rounded-xl border border-(--crm-border) bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h4 className="flex items-center gap-1.5 text-sm font-semibold text-(--crm-fg)"><Wand2 size={14} className="text-violet-500" />Action Items</h4>
-                  <span className="text-[0.69rem] font-medium text-(--crm-muted)">{actionItems.filter((item) => item.done).length}/{actionItems.length} done</span>
-                </div>
-                <ul className="mt-3 space-y-1">
-                  {actionItems.map((item, index) => (
-                    <li key={`${item.text}-${index}`} className="group/item flex items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-(--crm-soft)">
-                      <input type="checkbox" checked={item.done} onChange={() => toggleActionItem(index)} className="h-3.5 w-3.5 shrink-0 accent-violet-600" aria-label={item.text} />
-                      <span className={`min-w-0 flex-1 truncate text-xs ${item.done ? "text-(--crm-faint) line-through" : "text-(--crm-fg)"}`}>{item.text}</span>
-                      <button onClick={() => removeActionItem(index)} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:text-red-500 group-hover/item:opacity-100" aria-label="Remove"><X size={12} /></button>
-                    </li>
-                  ))}
-                </ul>
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const input = event.currentTarget.elements.namedItem("newItem") as HTMLInputElement;
-                    addActionItem(input.value);
-                    input.value = "";
-                  }}
-                  className="mt-2.5 flex gap-2"
-                >
-                  <input name="newItem" placeholder="Add task…" className="h-8 flex-1 rounded-lg border border-(--crm-border-input) bg-gray-50 px-3 text-xs outline-none transition-colors placeholder:text-gray-400 focus:border-(--crm-focus-border)" />
-                  <button type="submit" className="rounded-lg border border-(--crm-border) bg-gray-50 px-2.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft)">Add</button>
-                </form>
+          {/* ===== PAPER (fills remaining height) ===== */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto flex w-full max-w-[820px] flex-col px-4 py-4 sm:px-8 sm:py-6">
+              <div className="flex min-h-0 flex-1 flex-col bg-white p-5 sm:p-8">
+                <input
+                  value={editor.title}
+                  onChange={(event) => updateDraft({ title: event.target.value })}
+                  placeholder="Untitled note"
+                  maxLength={160}
+                  className="mb-2 w-full bg-transparent text-xl font-bold tracking-[-.03em] text-(--crm-fg) outline-none placeholder:text-(--crm-placeholder) sm:text-3xl"
+                />
+                <div className="mb-4 h-px bg-(--crm-border-soft) sm:mb-5" />
+                <div
+                  ref={contentRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-multiline="true"
+                  data-ph="Start writing…"
+                  onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
+                  className="note-editor min-h-[40vh] flex-1 bg-transparent text-[0.9375rem] leading-7 text-(--crm-fg) outline-none sm:text-base sm:leading-8 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
+                />
               </div>
+
+              {/* Action Items */}
+              {editingNote && actionItems.length > 0 && (
+                <div className="mt-4 rounded-xl border border-(--crm-border) bg-white p-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="flex items-center gap-1.5 text-sm font-semibold text-(--crm-fg)"><Wand2 size={14} className="text-violet-500" />Action Items</h4>
+                    <span className="text-[0.69rem] font-medium text-(--crm-muted)">{actionItems.filter((item) => item.done).length}/{actionItems.length} done</span>
+                  </div>
+                  <ul className="mt-3 space-y-1">
+                    {actionItems.map((item, index) => (
+                      <li key={`${item.text}-${index}`} className="group/item flex items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-(--crm-soft)">
+                        <input type="checkbox" checked={item.done} onChange={() => toggleActionItem(index)} className="h-3.5 w-3.5 shrink-0 accent-violet-600" aria-label={item.text} />
+                        <span className={`min-w-0 flex-1 truncate text-xs ${item.done ? "text-(--crm-faint) line-through" : "text-(--crm-fg)"}`}>{item.text}</span>
+                        <button onClick={() => removeActionItem(index)} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:text-red-500 group-hover/item:opacity-100" aria-label="Remove"><X size={12} /></button>
+                      </li>
+                    ))}
+                  </ul>
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const input = event.currentTarget.elements.namedItem("newItem") as HTMLInputElement;
+                      addActionItem(input.value);
+                      input.value = "";
+                    }}
+                    className="mt-2.5 flex gap-2"
+                  >
+                    <input name="newItem" placeholder="Add task…" className="h-8 flex-1 rounded-lg border border-(--crm-border-input) bg-(--crm-surface) px-3 text-xs outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-focus-border)" />
+                    <button type="submit" className="rounded-lg border border-(--crm-border) bg-(--crm-surface) px-2.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft)">Add</button>
+                  </form>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {confirmModal}
@@ -795,7 +747,7 @@ export function NotesView() {
         )}
         {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
         {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
-      </div>
+      </NotesShell>
     );
   }
 
