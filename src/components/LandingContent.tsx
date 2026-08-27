@@ -169,7 +169,7 @@ export function LandingContent() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#09090b] font-[var(--font-dm)] text-white selection:bg-[#c9e979]/30 selection:text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#09090b] font-[var(--font-dm)] text-white selection:bg-[#c9e979]/30 selection:text-white">
       {/* ═══════ NAV ═══════ */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/[0.06] bg-[#09090b]/70 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
