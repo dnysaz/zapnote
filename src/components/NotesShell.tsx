@@ -55,12 +55,12 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
   const sidebarPadX = compact ? "0.75rem" : "1.25rem";
 
   return (
-    <div className="min-h-dvh bg-(--crm-bg) font-[var(--font-dm)] text-(--crm-fg)">
+    <div className="h-dvh overflow-hidden bg-(--crm-bg) font-[var(--font-dm)] text-(--crm-fg)">
       <style>{`
         @keyframes vn-rise { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
         .vn-rise { animation: vn-rise .55s cubic-bezier(.2,.75,.25,1) both; }
       `}</style>
-      <div className="flex min-h-dvh">
+      <div className="flex h-dvh overflow-hidden">
         {/* Sidebar — hidden on mobile unless toggled */}
         <aside
           style={{ width: sidebarWidth, paddingLeft: sidebarPadX, paddingRight: sidebarPadX }}
@@ -148,7 +148,7 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
         </aside>
 
         {/* Main content */}
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           {/* Header — compact on mobile */}
           <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-(--crm-border) bg-(--crm-surface) px-4 shadow-[0_1px_0_rgba(0,0,0,.03)] sm:h-[76px] sm:px-8">
             <div className="flex items-center gap-2 sm:gap-3">
