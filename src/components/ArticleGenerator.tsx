@@ -515,16 +515,17 @@ export function ArticleGenerator() {
                   {/* Article Content — rendered markdown */}
                   <MarkdownView content={slider.content} className="text-sm" />
                 </div>
-                <div className="flex gap-2 border-t border-(--crm-border) px-6 py-4">
-                  <button onClick={() => copyText(slider.content)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Copy size={14} />{copied ? "Copied" : "Copy"}</button>
-                  <button onClick={() => void downloadAsPdf(slider.content, slider.title)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Download size={14} />PDF</button>
-                  <button onClick={() => void runHumanize(slider)} disabled={humanizeBusy} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) disabled:opacity-60">
+                <div className="grid grid-cols-2 gap-2 border-t border-(--crm-border) px-4 py-3 sm:flex sm:px-6 sm:py-4">
+                  <button onClick={() => copyText(slider.content)} className="flex items-center justify-center gap-1.5 rounded-lg border border-(--crm-border-input) px-3 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4"><Copy size={14} />{copied ? "Copied" : "Copy"}</button>
+                  <button onClick={() => void downloadAsPdf(slider.content, slider.title)} className="flex items-center justify-center gap-1.5 rounded-lg border border-(--crm-border-input) px-3 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4"><Download size={14} />PDF</button>
+                  <button onClick={() => void runHumanize(slider)} disabled={humanizeBusy} className="flex items-center justify-center gap-1.5 rounded-lg border border-(--crm-border-input) px-3 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) disabled:opacity-60 sm:rounded-xl sm:px-4">
                     {humanizeBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                     {humanizeBusy ? "Analyzing…" : slider.humanize ? "Re-analyze" : "Humanize"}
                   </button>
-                  <button onClick={() => setShareArticle(slider)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Share2 size={14} />Share</button>
-                  <div className="flex-1" />
-                  <button onClick={() => setSlider(null)} className="rounded-xl border border-(--crm-border) px-4 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-hover)">Close</button>
+                  <button onClick={() => setShareArticle(slider)} className="flex items-center justify-center gap-1.5 rounded-lg border border-(--crm-border-input) px-3 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4"><Share2 size={14} />Share</button>
+                  <div className="col-span-2 flex items-center justify-end sm:col-span-1 sm:flex-1">
+                    <button onClick={() => setSlider(null)} className="rounded-lg border border-(--crm-border) px-3 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-hover) sm:rounded-xl sm:px-4">Close</button>
+                  </div>
                 </div>
               </>
             )}
