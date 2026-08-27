@@ -172,17 +172,17 @@ export function LandingContent() {
     <div className="min-h-screen bg-[#09090b] font-[var(--font-dm)] text-white selection:bg-[#c9e979]/30 selection:text-white">
       {/* ═══════ NAV ═══════ */}
       <nav className="fixed top-0 z-50 w-full border-b border-white/[0.06] bg-[#09090b]/70 backdrop-blur-2xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#234b42] to-[#477f67] font-[var(--font-space-mono)] text-sm font-bold text-[#c9e979] shadow-lg shadow-[#234b42]/20">
               Z
             </div>
-            <span className="text-lg font-bold tracking-[-.03em]">ZapNote!</span>
+            <span className="text-base font-bold tracking-[-.03em] sm:text-lg">ZapNote!</span>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/app/notes"
-              className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-[#234b42] to-[#2d5c51] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#234b42]/20 transition-all hover:shadow-xl hover:shadow-[#234b42]/30"
+              className="group relative overflow-hidden rounded-lg bg-gradient-to-r from-[#234b42] to-[#2d5c51] px-3.5 py-2 text-xs font-semibold text-white shadow-lg shadow-[#234b42]/20 transition-all hover:shadow-xl hover:shadow-[#234b42]/30 sm:rounded-xl sm:px-5 sm:py-2.5 sm:text-sm"
             >
               <span className="relative z-10 flex items-center gap-1.5">
                 Open App <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
@@ -194,7 +194,7 @@ export function LandingContent() {
       </nav>
 
       {/* ═══════ HERO ═══════ */}
-      <section ref={heroRef} className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
+      <section ref={heroRef} className="relative overflow-hidden pt-24 pb-12 sm:pt-40 sm:pb-28">
         {/* Animated blobs */}
         <GradientBlob color="#234b42" size={800} x="10%" y="-20%" delay={0} />
         <GradientBlob color="#c9e979" size={600} x="60%" y="-10%" delay={200} />
@@ -221,7 +221,7 @@ export function LandingContent() {
           <Reveal>
             <div className="mx-auto max-w-4xl text-center">
               {/* Badge */}
-              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-medium text-white/70 backdrop-blur-sm">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur-sm sm:mb-8 sm:px-4 sm:py-1.5 sm:text-sm">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#c9e979]/20">
                   <Zap size={11} className="text-[#c9e979]" />
                 </span>
@@ -229,7 +229,7 @@ export function LandingContent() {
               </div>
 
               {/* Headline */}
-              <h1 className="text-5xl font-bold tracking-[-.05em] sm:text-6xl lg:text-[5.5rem] lg:leading-[1.05]">
+              <h1 className="text-3xl font-bold tracking-[-.05em] sm:text-5xl lg:text-[5.5rem] lg:leading-[1.05]">
                 <span className="text-white">Your ideas,</span>
                 <br />
                 <span className="bg-gradient-to-r from-[#c9e979] via-[#a8d449] to-[#8bc34a] bg-clip-text text-transparent">
@@ -238,7 +238,7 @@ export function LandingContent() {
               </h1>
 
               {/* Sub */}
-              <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-white/50 sm:text-xl">
+              <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-white/50 sm:mt-7 sm:text-lg lg:text-xl">
                 The all-in-one workspace for notes, articles, carousels, and content strategy.
                 <br className="hidden sm:block" />
                 Write smarter. Create faster. Analyze deeper.
@@ -248,7 +248,7 @@ export function LandingContent() {
               <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link
                   href="/app/notes"
-                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#234b42] to-[#2d5c51] px-8 py-4 text-base font-semibold text-white shadow-2xl shadow-[#234b42]/30 transition-all hover:shadow-[#234b42]/40"
+                  className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-[#234b42] to-[#2d5c51] px-6 py-3 text-sm font-semibold text-white shadow-2xl shadow-[#234b42]/30 transition-all hover:shadow-[#234b42]/40 sm:rounded-2xl sm:px-8 sm:py-4 sm:text-base"
                 >
                   <span className="relative z-10 flex items-center gap-2">
                     Start Writing Free
@@ -258,14 +258,14 @@ export function LandingContent() {
                 </Link>
                 <a
                   href="#features"
-                  className="flex items-center gap-2 rounded-2xl border border-white/10 px-8 py-4 text-base font-semibold text-white/60 transition-all hover:border-white/20 hover:text-white/80"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 px-6 py-3 text-sm font-semibold text-white/60 transition-all hover:border-white/20 hover:text-white/80 sm:rounded-2xl sm:px-8 sm:py-4 sm:text-base"
                 >
                   See Features
                 </a>
               </div>
 
               {/* Stats bar */}
-              <div className="mx-auto mt-16 grid max-w-lg grid-cols-4 gap-6">
+              <div className="mx-auto mt-10 grid max-w-lg grid-cols-4 gap-4 sm:mt-16 sm:gap-6">
                 {stats.map((s) => (
                   <div key={s.label} className="text-center">
                     <p className="text-2xl font-bold tracking-tight text-white">{s.value}</p>
@@ -277,7 +277,7 @@ export function LandingContent() {
           </Reveal>
 
           {/* ═══════ APP PREVIEW ═══════ */}
-          <Reveal delay={200} className="mt-20">
+          <Reveal delay={200} className="mt-10 sm:mt-20">
             <div className="mx-auto max-w-5xl">
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-sm">
                 {/* Browser chrome */}
@@ -369,7 +369,7 @@ export function LandingContent() {
       </section>
 
       {/* ═══════ FEATURES — BENTO GRID ═══════ */}
-      <section id="features" className="relative py-24 sm:py-32">
+      <section id="features" className="relative py-16 sm:py-24 lg:py-32">
         <div className="absolute inset-0 -z-10">
           <div className="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 rounded-full bg-[#234b42]/5 blur-[150px]" />
         </div>
@@ -378,16 +378,16 @@ export function LandingContent() {
           <Reveal>
             <div className="mx-auto max-w-2xl text-center">
               <p className="text-sm font-semibold uppercase tracking-[.2em] text-[#c9e979]/70">Features</p>
-              <h2 className="mt-4 text-4xl font-bold tracking-[-.04em] sm:text-5xl">
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em] sm:text-4xl lg:text-5xl">
                 Everything you need
               </h2>
-              <p className="mt-5 text-lg text-white/40">
+              <p className="mt-4 text-sm text-white/40 sm:mt-5 sm:text-lg">
                 From quick notes to full articles — all powered by AI.
               </p>
             </div>
           </Reveal>
 
-          <div className="mt-16 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[minmax(200px,auto)]">
+          <div className="mt-10 grid grid-cols-1 gap-3 sm:mt-16 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 auto-rows-[minmax(200px,auto)]">
             {features.map((f, i) => (
               <Reveal key={f.title} delay={80 + i * 60} className={f.span}>
                 <div className="group relative h-full overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.04]">
@@ -410,22 +410,22 @@ export function LandingContent() {
       </section>
 
       {/* ═══════ THEMES ═══════ */}
-      <section className="relative py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6">
+      <section className="relative py-16 sm:py-24 lg:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <Reveal>
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-sm font-semibold uppercase tracking-[.2em] text-[#c9e979]/70">Customize</p>
-              <h2 className="mt-4 text-4xl font-bold tracking-[-.04em] sm:text-5xl">
+              <p className="text-xs font-semibold uppercase tracking-[.2em] text-[#c9e979]/70 sm:text-sm">Customize</p>
+              <h2 className="mt-4 text-2xl font-bold tracking-[-.04em] sm:text-4xl lg:text-5xl">
                 6 beautiful themes
               </h2>
-              <p className="mt-5 text-lg text-white/40">
+              <p className="mt-4 text-sm text-white/40 sm:mt-5 sm:text-lg">
                 Switch themes instantly. Every color is crafted for readability.
               </p>
             </div>
           </Reveal>
 
           <Reveal delay={100}>
-            <div className="mt-16 flex flex-wrap items-center justify-center gap-5">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3 sm:mt-16 sm:gap-5">
               {[
                 { name: "Emerald", colors: ["#234b42", "#c9e979"] },
                 { name: "Ocean", colors: ["#1e5f74", "#7fd3e8"] },
@@ -436,11 +436,11 @@ export function LandingContent() {
               ].map((t) => (
                 <div
                   key={t.name}
-                  className="group flex flex-col items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.04]"
+                  className="group flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 transition-all duration-300 hover:border-white/[0.12] hover:bg-white/[0.04] sm:gap-3 sm:rounded-2xl sm:p-6"
                 >
                   <div className="relative">
                     <div
-                      className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110"
+                      className="flex h-12 w-12 items-center justify-center rounded-xl shadow-lg transition-transform duration-300 group-hover:scale-110 sm:h-16 sm:w-16 sm:rounded-2xl"
                       style={{ background: t.colors[0], boxShadow: `0 8px 32px ${t.colors[0]}40` }}
                     >
                       <div className="h-6 w-6 rounded-full" style={{ background: `${t.colors[1]}60` }} />
@@ -455,20 +455,20 @@ export function LandingContent() {
       </section>
 
       {/* ═══════ PWA / INSTALL ═══════ */}
-      <section className="relative py-24 sm:py-32">
+      <section className="relative py-16 sm:py-24 lg:py-32">
         <div className="absolute inset-0 -z-10">
           <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#c9e979]/3 blur-[150px]" />
         </div>
 
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid items-center gap-16 lg:grid-cols-2">
+          <div className="grid items-center gap-10 sm:gap-16 lg:grid-cols-2">
             <Reveal>
               <div>
                 <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#c9e979]/20 bg-[#c9e979]/5 px-4 py-1.5 text-sm font-medium text-[#c9e979]/80">
                   <Smartphone size={14} />
                   Progressive Web App
                 </div>
-                <h2 className="text-4xl font-bold tracking-[-.04em] sm:text-5xl">
+                <h2 className="text-2xl font-bold tracking-[-.04em] sm:text-4xl lg:text-5xl">
                   Install on{' '}
                   <span className="bg-gradient-to-r from-[#c9e979] to-[#8bc34a] bg-clip-text text-transparent">
                     any device
@@ -554,20 +554,20 @@ export function LandingContent() {
       </section>
 
       {/* ═══════ PRIVACY / BYOK ═══════ */}
-      <section className="relative py-24 sm:py-32">
+      <section className="relative py-16 sm:py-24 lg:py-32">
         <div className="absolute inset-0 -z-10">
           <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-[#234b42]/5 blur-[150px]" />
         </div>
 
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid items-center gap-16 lg:grid-cols-2">
+          <div className="grid items-center gap-10 sm:gap-16 lg:grid-cols-2">
             <Reveal>
               <div>
                 <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#c9e979]/20 bg-[#c9e979]/5 px-4 py-1.5 text-sm font-medium text-[#c9e979]/80">
                   <Shield size={14} />
                   Privacy First
                 </div>
-                <h2 className="text-4xl font-bold tracking-[-.04em] sm:text-5xl">
+                <h2 className="text-2xl font-bold tracking-[-.04em] sm:text-4xl lg:text-5xl">
                   Your data stays{" "}
                   <span className="bg-gradient-to-r from-[#c9e979] to-[#8bc34a] bg-clip-text text-transparent">
                     yours
@@ -640,29 +640,25 @@ export function LandingContent() {
       </section>
 
       {/* ═══════ CTA ═══════ */}
-      <section className="relative py-24 sm:py-32">
+      <section className="relative py-16 sm:py-24 lg:py-32">
         <div className="mx-auto max-w-7xl px-6">
           <Reveal>
-            <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#234b42] via-[#1a3d34] to-[#0f2e27] px-8 py-20 text-center sm:px-16">
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#234b42] via-[#1a3d34] to-[#0f2e27] px-6 py-12 text-center sm:rounded-3xl sm:px-16 sm:py-20">
               <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#c9e979]/10 blur-[100px]" />
               <div className="absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-[#c9e979]/5 blur-[100px]" />
               <div className="absolute left-1/2 top-1/2 h-60 w-60 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#c9e979]/5 blur-[80px]" />
 
               <div className="relative">
-                <h2 className="text-4xl font-bold tracking-[-.04em] text-white sm:text-5xl">
-                  Ready to supercharge
-                  <br />
-                  <span className="bg-gradient-to-r from-[#c9e979] to-[#8bc34a] bg-clip-text text-transparent">
-                    your notes?
-                  </span>
+                <h2 className="text-2xl font-bold tracking-[-.04em] text-white sm:text-4xl lg:text-5xl">
+                  Ready to supercharge<br className="hidden sm:block" /> your notes?
                 </h2>
-                <p className="mx-auto mt-6 max-w-lg text-lg text-white/50">
+                <p className="mx-auto mt-4 max-w-lg text-sm text-white/50 sm:mt-6 sm:text-lg">
                   Start writing smarter today. No credit card required. Free forever for basic usage.
                 </p>
-                <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:mt-10 sm:flex-row sm:gap-4">
                   <Link
                     href="/app/notes"
-                    className="group relative overflow-hidden rounded-2xl bg-white px-10 py-4 text-base font-semibold text-[#234b42] shadow-2xl shadow-black/20 transition-all hover:shadow-white/10"
+                    className="group relative overflow-hidden rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#234b42] shadow-2xl shadow-black/20 transition-all hover:shadow-white/10 sm:rounded-2xl sm:px-10 sm:py-4 sm:text-base"
                   >
                     <span className="relative z-10 flex items-center gap-2">
                       Get Started Free
