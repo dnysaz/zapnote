@@ -23,9 +23,33 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const GUEST_KEY = "zapnote:guest";
+const SESSION_CACHE_KEY = "zapnote:session";
+
+function readCachedSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Session;
+  } catch { return null; }
+}
+
+function writeCachedSession(s: Session) {
+  try {
+    if (s.status === "loading") localStorage.removeItem(SESSION_CACHE_KEY);
+    else localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(s));
+  } catch {}
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session>({ status: "loading" });
+  const [session, setSession] = useState<Session>(() => {
+    // Instant: use cached session or guest flag — no loading flash
+    try {
+      if (localStorage.getItem(GUEST_KEY) === "1") return { status: "anonymous" };
+    } catch {}
+    const cached = readCachedSession();
+    if (cached && cached.status !== "loading") return cached;
+    return { status: "loading" };
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -36,25 +60,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (data.authed) {
           try { localStorage.removeItem(GUEST_KEY); } catch {}
-          setSession({ status: "authed", email: data.email ?? "", name: data.name ?? "", emailVerified: data.emailVerified ?? false });
+          const next: Session = { status: "authed", email: data.email ?? "", name: data.name ?? "", emailVerified: data.emailVerified ?? false };
+          writeCachedSession(next);
+          setSession(next);
           return;
         }
         try {
           if (localStorage.getItem(GUEST_KEY) === "1") {
-            setSession({ status: "anonymous" });
+            const next: Session = { status: "anonymous" };
+            writeCachedSession(next);
+            setSession(next);
             return;
           }
         } catch {}
-        setSession({ status: "guest" });
+        const next: Session = { status: "guest" };
+        writeCachedSession(next);
+        setSession(next);
       })
       .catch(() => {
         try {
           if (localStorage.getItem(GUEST_KEY) === "1") {
-            if (!cancelled) setSession({ status: "anonymous" });
+            if (!cancelled) { const next: Session = { status: "anonymous" }; writeCachedSession(next); setSession(next); }
             return;
           }
         } catch {}
-        if (!cancelled) setSession({ status: "guest" });
+        if (!cancelled) { const next: Session = { status: "guest" }; writeCachedSession(next); setSession(next); }
       });
 
     return () => { cancelled = true; };
@@ -70,21 +100,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const { email: authedEmail, name } = await postAuth("/api/auth/login", { email, password });
     try { localStorage.removeItem(GUEST_KEY); } catch {}
-    // Fetch email_verified status after login
     let emailVerified = false;
     try {
       const meRes = await fetch("/api/auth/me");
       const meData = await meRes.json() as { emailVerified?: boolean };
       emailVerified = meData.emailVerified ?? false;
     } catch {}
-    setSession({ status: "authed", email: authedEmail, name, emailVerified });
+    const next: Session = { status: "authed", email: authedEmail, name, emailVerified };
+    writeCachedSession(next);
+    setSession(next);
   };
 
   const register = async (email: string, password: string) => {
     const { email: authedEmail, name } = await postAuth("/api/auth/register", { email, password });
     try { localStorage.removeItem(GUEST_KEY); } catch {}
-    // New registration → email not verified yet
-    setSession({ status: "authed", email: authedEmail, name, emailVerified: false });
+    const next: Session = { status: "authed", email: authedEmail, name, emailVerified: false };
+    writeCachedSession(next);
+    setSession(next);
   };
 
   const loginAsGuest = useCallback(() => {
@@ -100,7 +132,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!wasGuest) {
       try { localStorage.removeItem(GUEST_KEY); } catch {}
     }
-    setSession({ status: "guest" });
+    const next: Session = { status: "guest" };
+    writeCachedSession(next);
+    setSession(next);
   };
 
   const resendVerification = async () => {

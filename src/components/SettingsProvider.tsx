@@ -92,10 +92,27 @@ export function applyTheme(theme?: string) {
   root.style.setProperty("--crm-card-track", colors.cardTrack);
 }
 
+const SETTINGS_CACHE_KEY = "zapnote:settings";
+
+function readCachedSettings(): SiteSettings | null {
+  try {
+    const raw = localStorage.getItem(SETTINGS_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SiteSettings;
+  } catch { return null; }
+}
+
+function writeCachedSettings(s: SiteSettings) {
+  try { localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(s)); } catch {}
+}
+
 export function SettingsProvider({ isGuest = false, children }: { isGuest?: boolean; children: ReactNode }) {
-  // Use lazy initializer so guest gets DEFAULT_SETTINGS without setState-in-effect
-  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
-  // Guests load synchronously — no loading state needed
+  const [settings, setSettings] = useState<SiteSettings>(() => {
+    // Instant: apply cached settings or defaults — no loading flash
+    const cached = readCachedSettings();
+    const initial = cached ? { ...DEFAULT_SETTINGS, ...cached } : DEFAULT_SETTINGS;
+    return initial;
+  });
   const [loading, setLoading] = useState(!isGuest);
 
   // Apply settings immediately whenever they change (for real-time preview)
@@ -119,14 +136,13 @@ export function SettingsProvider({ isGuest = false, children }: { isGuest?: bool
       .then((data: SiteSettings) => {
         if (cancelled) return;
         const merged = { ...DEFAULT_SETTINGS, ...data };
+        writeCachedSettings(merged);
         setSettings(merged);
-        // Apply immediately after fetch — before React re-render
         applyTheme(merged.theme);
         applyFontSize(merged.fontSize);
       })
       .catch(() => {
         if (cancelled) return;
-        // Apply defaults on error
         applyTheme(DEFAULT_SETTINGS.theme);
         applyFontSize(DEFAULT_SETTINGS.fontSize);
       })
@@ -135,8 +151,11 @@ export function SettingsProvider({ isGuest = false, children }: { isGuest?: bool
   }, [isGuest]);
 
   const updateSettings = useCallback(async (patch: Partial<SiteSettings>) => {
-    setSettings((prev) => ({ ...prev, ...patch }));
-    // Apply immediately for real-time feedback
+    setSettings((prev) => {
+      const next = { ...prev, ...patch };
+      writeCachedSettings(next);
+      return next;
+    });
     if (patch.theme) applyTheme(patch.theme);
     if (patch.fontSize) applyFontSize(patch.fontSize);
     await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
