@@ -624,7 +624,7 @@ export function NotesView() {
 
         <div className="flex flex-1 flex-col">
           {/* ===== MINIMAL TOOLBAR ===== */}
-          <div className="flex shrink-0 items-center justify-center gap-1 border-b border-(--crm-border) bg-white px-3 py-1.5 sm:gap-1.5">
+          <div className="flex shrink-0 items-center justify-center gap-1 border-b border-(--crm-border) bg-white px-3 py-1.5 sm:gap-1.5 sm:px-5">
             {/* Back */}
             <button onClick={handleBack} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Save & back"><ArrowLeft size={15} /></button>
             <div className="mx-1 h-4 w-px bg-(--crm-border)" />
@@ -680,10 +680,10 @@ export function NotesView() {
             <button onClick={() => setFullscreen(true)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Fullscreen"><Maximize2 size={15} /></button>
           </div>
 
-          {/* ===== PAPER (A4 portrait, fills height) ===== */}
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-gray-100">
-            <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col p-3 sm:p-5">
-              <div className="flex min-h-0 flex-1 flex-col bg-white p-4 shadow-sm sm:p-8">
+          {/* ===== PAPER (A4 portrait) ===== */}
+          <div className="flex-1 overflow-y-auto bg-gray-100">
+            <div className="mx-auto flex w-full max-w-[900px] flex-col p-3 sm:p-5">
+              <div className="flex aspect-[210/297] min-h-0 flex-col bg-white p-4 shadow-sm sm:p-8">
                 <input
                   value={editor.title}
                   onChange={(event) => updateDraft({ title: event.target.value })}
