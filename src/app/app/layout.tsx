@@ -6,7 +6,6 @@ import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { UnifiedNotesProvider } from "@/components/UnifiedNotesProvider";
 import { SettingsProvider } from "@/components/SettingsProvider";
 import { VerificationBanner } from "@/components/VerificationBanner";
-import { PwaInstallBanner } from "@/components/PwaInstallBanner";
 
 const AUTH_ONLY_PATHS = ["/app/settings", "/app/articles", "/app/swot", "/app/creator"];
 
@@ -35,7 +34,6 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
   return (
     <>
       <VerificationBanner />
-      <PwaInstallBanner />
       {children}
     </>
   );

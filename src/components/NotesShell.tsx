@@ -6,7 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useSettings } from "@/components/SettingsProvider";
-import { Bot, Globe, Lock, LogOut, Menu, NotebookPen, PenLine, PenTool, Settings, Sparkles, X, Zap } from "lucide-react";
+import { Bot, Download, Globe, Lock, LogOut, Menu, NotebookPen, PenLine, PenTool, Settings, Sparkles, X, Zap } from "lucide-react";
+import { usePwaInstall } from "@/lib/usePwaInstall"
 
 const SIDEBAR_KEY = "zapnote:sidebar:minimized";
 
@@ -37,6 +38,8 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
   const initials = isGuest ? "G" : (name || email || "U").slice(0, 2).toUpperCase();
   const compact = minimized && !mobileNav;
   const skipFirstPersist = useRef(true);
+  const { isInstallable, isInstalled, install } = usePwaInstall();
+  const [installDismissed, setInstallDismissed] = useState(false);
 
   useIsomorphicLayoutEffect(() => { setMounted(true); }, []);
 
@@ -121,6 +124,21 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
               <div className="mb-3 flex items-center gap-2 rounded-lg border border-dashed border-(--crm-faint) px-3 py-2">
                 <Globe size={13} className="shrink-0 text-(--crm-faint)" />
                 <span className="text-[0.69rem] font-semibold text-(--crm-faint)">Guest Mode</span>
+              </div>
+            )}
+            {isInstallable && !isInstalled && !installDismissed && !compact && (
+              <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-dashed border-(--crm-border) bg-(--crm-hover) px-3 py-2.5">
+                <Download size={13} className="mt-0.5 shrink-0 text-(--crm-primary)" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.69rem] font-semibold text-(--crm-fg)">Install ZapNote!</p>
+                  <p className="mt-0.5 text-[0.6rem] leading-4 text-(--crm-muted)">Add to home screen for quick access</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button onClick={() => void install()} className="rounded-md bg-(--crm-primary) px-2 py-1 text-[0.6rem] font-semibold text-white transition-colors hover:bg-(--crm-dark)">Install</button>
+                  <button onClick={() => setInstallDismissed(true)} className="rounded p-0.5 text-(--crm-muted) hover:text-(--crm-fg)" aria-label="Dismiss">
+                    <X size={12} />
+                  </button>
+                </div>
               </div>
             )}
             <button onClick={logout} className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${compact ? "justify-center px-2" : "px-3 text-left"} text-(--crm-faint) hover:bg-(--crm-darker) hover:text-white`} title={isGuest ? "Exit guest mode" : "Logout"}>
