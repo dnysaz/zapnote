@@ -9,7 +9,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!(await requireAuth())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const sql = getSql();
   const body = (await request.json()) as Note;
-  await sql`UPDATE notes SET title = ${body.title}, content = ${body.content}, updated_at = ${body.updatedAt} WHERE id = ${id}`;
+  const tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
+  const actionItems = JSON.stringify(Array.isArray(body.actionItems) ? body.actionItems : []);
+  try {
+    await sql`UPDATE notes SET title = ${body.title}, content = ${body.content}, updated_at = ${body.updatedAt}, tags = ${tags}::jsonb, action_items = ${actionItems}::jsonb WHERE id = ${id}`;
+  } catch {
+    // Columns not migrated yet — update base fields only.
+    await sql`UPDATE notes SET title = ${body.title}, content = ${body.content}, updated_at = ${body.updatedAt} WHERE id = ${id}`;
+  }
   return NextResponse.json(body);
 }
 

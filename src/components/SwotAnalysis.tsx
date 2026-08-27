@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Bot,
-  Check,
   Copy,
   Loader2,
+  Lock,
   Plus,
   Search,
   Sparkles,
@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { NotesShell } from "@/components/NotesShell";
+import { useSettings } from "@/components/SettingsProvider";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { formatDate, uid } from "@/lib/crm";
 
@@ -38,6 +39,8 @@ function snippet(text: string): string {
 }
 
 export function SwotAnalysis() {
+  const { settings } = useSettings();
+  const hasApiKey = settings.hasGeminiApiKey ?? false;
   const [analyses, setAnalyses] = useState<SwotResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -195,31 +198,29 @@ export function SwotAnalysis() {
   // =================== GRID VIEW ===================
   return (
     <NotesShell title="SWOT Analysis" subtitle="Content strategy">
-      <div className="vn-rise flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h2 className="text-[1.625rem] font-semibold tracking-[-.04em]">SWOT Analysis</h2>
-          <p className="mt-1 text-sm text-(--crm-secondary)">
-            {query.length >= 3
-              ? `${visible.length} ${visible.length === 1 ? "match" : "matches"} for "${query}"`
-              : `${sorted.length} ${sorted.length === 1 ? "analysis" : "analyses"} saved.`}
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search analyses…"
-              className="w-full max-w-[240px] rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent)"
-            />
+      <div className="vn-rise">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold tracking-[-.04em] sm:text-[1.625rem]">SWOT Analysis</h2>
+            <p className="mt-1 text-sm text-(--crm-secondary)">
+              {query.length >= 3
+                ? `${visible.length} ${visible.length === 1 ? "match" : "matches"} for "${query}"`
+                : `${sorted.length} ${sorted.length === 1 ? "analysis" : "analyses"} saved.`}
+            </p>
           </div>
-          <button
-            onClick={openNew}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-(--crm-primary) px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) hover:shadow-md"
-          >
-            <Plus size={16} />New Analysis
-          </button>
+          {hasApiKey ? (
+            <button onClick={openNew} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs">
+              <Plus size={12} />New Analysis
+            </button>
+          ) : (
+            <a href="/app/settings" className="flex shrink-0 items-center gap-1 rounded-md border border-dashed border-(--crm-border) bg-(--crm-panel) px-2 py-1.5 text-[0.65rem] font-semibold text-(--crm-muted) transition-colors hover:bg-(--crm-hover) sm:gap-2 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs">
+              <Lock size={12} />Add API Key
+            </a>
+          )}
+        </div>
+        <div className="relative mt-3">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search analyses…" className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:max-w-[240px]" />
         </div>
       </div>
 
@@ -249,7 +250,7 @@ export function SwotAnalysis() {
           </p>
         </div>
       ) : (
-        <div className="vn-rise mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="vn-rise mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visible.map((a) => (
             <div
               key={a.id}
@@ -259,25 +260,25 @@ export function SwotAnalysis() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(a); }
               }}
-              className="group relative flex cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-3 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]"
+              className="group relative flex min-h-[11rem] cursor-pointer flex-col rounded-xl border border-(--crm-border-soft) bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)]"
             >
-              <div className="flex items-start justify-between gap-1">
-                <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-4 text-(--crm-fg)">{a.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="line-clamp-2 min-w-0 flex-1 text-[0.9375rem] font-semibold leading-5 text-(--crm-fg)">{a.title}</p>
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
-                  className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100"
+                  className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100"
                   aria-label="Delete analysis"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={14} />
                 </button>
               </div>
-              <div className="my-2.5 h-px bg-(--crm-border-soft)" />
-              <p className="line-clamp-4 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(a.summary) || "No summary."}</p>
-              <div className="mt-2.5 flex items-center gap-1.5 border-t border-(--crm-border-soft) pt-2">
-                <span className={`rounded px-1.5 py-0.5 text-[0.63rem] font-bold ${a.seoScore >= 70 ? "bg-green-50 text-green-700" : a.seoScore >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>
+              <div className="my-3 h-px bg-(--crm-border-soft)" />
+              <p className="line-clamp-4 flex-1 text-[0.8125rem] leading-5 text-(--crm-secondary)">{snippet(a.summary) || "No summary."}</p>
+              <div className="mt-3 flex items-center gap-1.5 border-t border-(--crm-border-soft) pt-2.5">
+                <span className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-bold ${a.seoScore >= 70 ? "bg-green-50 text-green-700" : a.seoScore >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>
                   SEO {a.seoScore}/100
                 </span>
-                <span className="ml-auto text-[0.56rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(a.createdAt)}</span>
+                <span className="ml-auto text-[0.625rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(a.createdAt)}</span>
               </div>
             </div>
           ))}

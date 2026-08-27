@@ -1,10 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Note } from "@/lib/crm";
 
-const STORAGE_KEY = "vinotes:guest-notes";
+const STORAGE_KEY = "zapnote:guest-notes";
 
 type NotesContextValue = {
   notes: Note[];
@@ -31,17 +31,16 @@ function saveToStorage(notes: Note[]) {
 }
 
 export function GuestNotesProvider({ children }: { children: ReactNode }) {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  // Lazy initializer: load from localStorage synchronously during first render
+  // to avoid calling setState inside an effect
+  const [notes, setNotes] = useState<Note[]>(loadFromStorage);
+  const hasSyncedRef = useRef(false);
 
+  // Persist to localStorage on changes (after initial render)
   useEffect(() => {
-    setNotes(loadFromStorage());
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (loaded) saveToStorage(notes);
-  }, [notes, loaded]);
+    if (hasSyncedRef.current) saveToStorage(notes);
+    hasSyncedRef.current = true;
+  }, [notes]);
 
   const refresh = useCallback(async () => {}, []);
 

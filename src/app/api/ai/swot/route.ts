@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, getSessionEmail } from "@/lib/auth";
 import { callGemini } from "@/lib/gemini";
 import { SWOT_SYSTEM_PROMPT } from "@/lib/prompts";
 
@@ -16,6 +16,7 @@ export interface SwotResult {
 export async function POST(request: Request) {
   if (!(await requireAuth())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const email = await getSessionEmail();
     const body = (await request.json()) as { content?: string };
     const content = (body.content || "").trim();
     if (!content) return NextResponse.json({ error: "Article content is required." }, { status: 400 });
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
       content.slice(0, 20000),
     ].join("\n");
 
-    const raw = await callGemini({ systemPrompt: SWOT_SYSTEM_PROMPT, userPrompt });
+    const raw = await callGemini({ systemPrompt: SWOT_SYSTEM_PROMPT, userPrompt, userEmail: email || undefined });
 
     let parsed: Partial<SwotResult>;
     try { parsed = JSON.parse(raw) as Partial<SwotResult>; }

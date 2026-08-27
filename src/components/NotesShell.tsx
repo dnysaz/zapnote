@@ -6,14 +6,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useSettings } from "@/components/SettingsProvider";
-import { Bot, Globe, LogOut, Menu, NotebookPen, PenLine, Settings, X } from "lucide-react";
+import { Bot, Globe, Lock, LogOut, Menu, NotebookPen, PenLine, PenTool, Settings, Sparkles, X, Zap } from "lucide-react";
 
-const SIDEBAR_KEY = "vinotes:sidebar:minimized";
+const SIDEBAR_KEY = "zapnote:sidebar:minimized";
 
 const navItems = [
-  { label: "Notes", href: "/notes", icon: NotebookPen },
-  { label: "Articles", href: "/articles", icon: PenLine, authOnly: true },
-  { label: "SWOT Analysis", href: "/swot", icon: Bot, authOnly: true },
+  { label: "Notes", href: "/app/notes", icon: NotebookPen },
+  { label: "Articles", href: "/app/articles", icon: PenLine, authOnly: true, aiOnly: true },
+  { label: "SWOT Analysis", href: "/app/swot", icon: Bot, authOnly: true, aiOnly: true },
+  { label: "Creator", href: "/app/creator", icon: PenTool, authOnly: true, aiOnly: true },
 ];
 
 const useIsomorphicLayoutEffect =
@@ -44,20 +45,20 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
     try { window.localStorage.setItem(SIDEBAR_KEY, minimized ? "1" : "0"); } catch {}
   }, [minimized]);
 
+  const hasApiKey = settings.hasGeminiApiKey ?? false;
   const visibleNav = navItems.filter((item) => !item.authOnly || !isGuest);
 
-  // Sidebar width in rem — scales with root font-size via --vn-scale
   const sidebarWidth = compact ? "4.5rem" : "14rem";
   const sidebarPadX = compact ? "0.75rem" : "1.25rem";
 
   return (
-    <div className="min-h-screen bg-(--crm-bg) font-[var(--font-dm)] text-(--crm-fg)">
+    <div className="min-h-dvh bg-(--crm-bg) font-[var(--font-dm)] text-(--crm-fg)">
       <style>{`
         @keyframes vn-rise { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
         .vn-rise { animation: vn-rise .55s cubic-bezier(.2,.75,.25,1) both; }
       `}</style>
-      <div className="flex min-h-screen">
-        {/* Sidebar */}
+      <div className="flex min-h-dvh">
+        {/* Sidebar — hidden on mobile unless toggled */}
         <aside
           style={{ width: sidebarWidth, paddingLeft: sidebarPadX, paddingRight: sidebarPadX }}
           className={`${mobileNav ? "fixed inset-0 z-40 flex" : "hidden"} shrink-0 flex-col border-r border-(--crm-border) bg-(--crm-dark) py-6 text-(--crm-faint) md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto ${mounted ? "transition-[width,padding] duration-300" : ""}`}
@@ -71,28 +72,51 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
             <button className="shrink-0 md:hidden" onClick={() => setMobileNav(false)} aria-label="Close navigation"><X size={20} /></button>
           </div>
 
-          {/* Workspace label */}
           {!compact && <p className="mb-3 px-2 text-[0.63rem] font-semibold uppercase tracking-[.18em] text-(--crm-faint)">Workspace</p>}
 
-          {/* Nav items */}
           <nav className="space-y-1">
-            {visibleNav.map(({ label, href, icon: Icon }) => (
-              <Link key={href} href={href} title={label} onClick={() => setMobileNav(false)} className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${compact ? "justify-center px-2" : "px-3 text-left"} ${pathname === href ? "bg-(--crm-active) text-white" : "text-(--crm-faint) hover:bg-(--crm-darker) hover:text-white"}`}>
-                <Icon size={17} className="shrink-0" />{!compact && label}
+            {visibleNav.map(({ label, href, icon: Icon, aiOnly }) => {
+              const locked = aiOnly && !hasApiKey;
+              return (
+                <Link
+                  key={href}
+                  href={locked ? "/app/settings" : href}
+                  title={locked ? `Set up Gemini API key in Settings to use ${label}` : label}
+                  onClick={() => setMobileNav(false)}
+                  className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${compact ? "justify-center px-2" : "px-3 text-left"} ${locked ? "opacity-50" : ""} ${pathname === href ? "bg-(--crm-active) text-white" : "text-(--crm-faint) hover:bg-(--crm-darker) hover:text-white"}`}
+                >
+                  <Icon size={17} className="shrink-0" />{!compact && label}
+                  {!compact && locked && <Lock size={12} className="ml-auto shrink-0 opacity-60" />}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {!compact && !isGuest && <p className="mb-3 mt-8 px-2 text-[0.63rem] font-semibold uppercase tracking-[.18em] text-(--crm-faint)">Manage</p>}
+          {!isGuest && (
+            <nav className="space-y-1">
+              <Link href="/app/settings" title="Settings" onClick={() => setMobileNav(false)} className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${compact ? "justify-center px-2" : "px-3 text-left"} ${pathname === "/app/settings" ? "bg-(--crm-active) text-white" : "text-(--crm-faint) hover:bg-(--crm-darker) hover:text-white"}`}>
+                <Settings size={17} className="shrink-0" />{!compact && "Settings"}
               </Link>
-            ))}
-          </nav>
+            </nav>
+          )}
 
-          {/* Manage section */}
-          {!compact && <p className="mb-3 mt-8 px-2 text-[0.63rem] font-semibold uppercase tracking-[.18em] text-(--crm-faint)">Manage</p>}
-          <nav className="space-y-1">
-            <Link href="/settings" title="Settings" onClick={() => setMobileNav(false)} className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-sm transition-colors ${compact ? "justify-center px-2" : "px-3 text-left"} ${pathname === "/settings" ? "bg-(--crm-active) text-white" : "text-(--crm-faint) hover:bg-(--crm-darker) hover:text-white"}`}>
-              <Settings size={17} className="shrink-0" />{!compact && "Settings"}
-            </Link>
-          </nav>
-
-          {/* Footer — guest badge + logout */}
           <div className="mt-auto pt-6">
+            {!compact && !isGuest && !hasApiKey && (
+              <Link href="/app/settings" onClick={() => setMobileNav(false)} className="mb-3 flex items-start gap-2.5 rounded-lg border border-dashed border-(--amber) px-3 py-2.5 transition-colors hover:bg-(--crm-darker)" style={{ borderColor: "rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)" }}>
+                <Sparkles size={13} className="mt-0.5 shrink-0" style={{ color: "#f59e0b" }} />
+                <div>
+                  <p className="text-[0.69rem] font-semibold" style={{ color: "#f59e0b" }}>AI Not Configured</p>
+                  <p className="mt-0.5 text-[0.6rem] leading-4 text-(--crm-faint)">Add your Gemini API key in Settings to unlock AI features.</p>
+                </div>
+              </Link>
+            )}
+            {!compact && !isGuest && hasApiKey && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg px-3 py-2">
+                <Zap size={13} className="shrink-0 text-green-400" />
+                <span className="text-[0.69rem] font-semibold text-green-400">AI Ready</span>
+              </div>
+            )}
             {!compact && isGuest && (
               <div className="mb-3 flex items-center gap-2 rounded-lg border border-dashed border-(--crm-faint) px-3 py-2">
                 <Globe size={13} className="shrink-0 text-(--crm-faint)" />
@@ -107,24 +131,25 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
 
         {/* Main content */}
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-[76px] shrink-0 items-center justify-between border-b border-(--crm-border) bg-(--crm-surface) px-5 shadow-[0_1px_0_rgba(0,0,0,.03)] sm:px-8">
-            <div className="flex items-center gap-3">
-              <button className="rounded-lg p-2 hover:bg-(--crm-hover) md:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu size={20} /></button>
+          {/* Header — compact on mobile */}
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-(--crm-border) bg-(--crm-surface) px-4 shadow-[0_1px_0_rgba(0,0,0,.03)] sm:h-[76px] sm:px-8">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button className="rounded-lg p-1.5 hover:bg-(--crm-hover) md:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu size={20} /></button>
               <div>
-                <p className="text-[0.69rem] font-medium uppercase tracking-[.16em] text-(--crm-muted)">{subtitle}</p>
-                <h1 className="mt-0.5 text-xl font-semibold tracking-[-.03em]">{title}</h1>
+                <p className="text-[0.6rem] font-medium uppercase tracking-[.16em] text-(--crm-muted) sm:text-[0.69rem]">{subtitle}</p>
+                <h1 className="mt-0.5 text-base font-semibold tracking-[-.03em] sm:text-xl">{title}</h1>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {isGuest && <span className="flex items-center gap-1 rounded-full border border-dashed border-(--crm-border) bg-(--crm-hover) px-2.5 py-1 text-[0.69rem] font-semibold text-(--crm-muted)"><Globe size={12} />Guest</span>}
-              <div className="h-6 w-px bg-(--crm-border)" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              {isGuest && <span className="hidden items-center gap-1 rounded-full border border-dashed border-(--crm-border) bg-(--crm-hover) px-2 py-0.5 text-[0.6rem] font-semibold text-(--crm-muted) sm:flex"><Globe size={10} />Guest</span>}
+              <div className="hidden h-5 w-px bg-(--crm-border) sm:block" />
               <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-(--crm-soft) text-xs font-bold text-(--crm-fg)">{initials}</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-(--crm-soft) text-[0.65rem] font-bold text-(--crm-fg) sm:h-8 sm:w-8 sm:text-xs">{initials}</span>
               </div>
             </div>
           </header>
 
-          <div className="mx-auto w-full max-w-[1200px] flex-1 px-5 py-7 sm:px-8">{children}</div>
+          <div className="w-full flex-1 px-3 py-4 sm:mx-auto sm:max-w-[1200px] sm:px-5 sm:py-7 sm:px-8">{children}</div>
         </main>
       </div>
     </div>

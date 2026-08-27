@@ -2,20 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Download, FileText } from "lucide-react";
+import { MarkdownView } from "@/components/MarkdownView";
 import { buildNotePdf, downloadPdf } from "@/lib/pdf";
 import { THEMES, THEME_VAR_KEYS } from "@/lib/settings";
 import type { ThemeKey } from "@/lib/settings";
 
 type Article = { id: string; title: string; content: string };
-
-function toHtmlBlocks(html: string): string {
-  if (/<\/?[a-z][\s\S]*>/i.test(html)) return html;
-  if (!html.trim()) return "";
-  return html
-    .split(/\r?\n/)
-    .map((line) => `<div>${line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</div>`)
-    .join("");
-}
 
 export default function ShareArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const [article, setArticle] = useState<Article | null>(null);
@@ -92,10 +84,7 @@ export default function ShareArticlePage({ params }: { params: Promise<{ id: str
         </h1>
 
         {/* Content */}
-        <div
-          className="mt-8 text-base leading-8 text-gray-800 [&_div]:mb-2 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:text-lg [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline [&_strong]:font-semibold [&_em]:italic"
-          dangerouslySetInnerHTML={{ __html: toHtmlBlocks(article.content) }}
-        />
+        <MarkdownView content={article.content} className="mt-8 text-base leading-8" />
 
         {/* Download PDF button */}
         <div className="mt-12 border-t border-gray-200 pt-6">

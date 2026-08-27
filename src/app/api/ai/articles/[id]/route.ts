@@ -8,7 +8,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!(await requireAuth())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await request.json() as Record<string, unknown>;
   const sql = getSql();
-  const sets: string[] = [];
   if (body.title !== undefined) await sql`UPDATE articles SET title = ${body.title}, updated_at = NOW() WHERE id = ${id}`;
   if (body.content !== undefined) await sql`UPDATE articles SET content = ${body.content}, updated_at = NOW() WHERE id = ${id}`;
   if (body.keyword !== undefined) await sql`UPDATE articles SET keyword = ${body.keyword}, updated_at = NOW() WHERE id = ${id}`;

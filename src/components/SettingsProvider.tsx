@@ -29,6 +29,19 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
+/** Fixed font colors — NEVER change with the theme (gray-800/900 based). */
+const FONT_COLORS: Record<string, string> = {
+  fg: "#111827", // gray-900
+  body: "#1f2937", // gray-800
+  secondary: "#374151", // gray-700
+  muted: "#6b7280", // gray-500
+  label: "#9ca3af", // gray-400
+  faint: "#a3aab2",
+  placeholder: "#d1d5db", // gray-300
+  "avatar-text": "#374151",
+  text: "#1f2937",
+};
+
 /** Mix a color with white at given percentage */
 function mixWithWhite(hex: string, pct: number): string {
   const [r, g, b] = hexToRgb(hex);
@@ -36,21 +49,6 @@ function mixWithWhite(hex: string, pct: number): string {
   const mg = Math.round(g + (255 - g) * (pct / 100));
   const mb = Math.round(b + (255 - b) * (pct / 100));
   return `rgb(${mr},${mg},${mb})`;
-}
-
-/** Lighten a hex color */
-function lighten(hex: string, amount: number): string {
-  const [r, g, b] = hexToRgb(hex);
-  const lr = Math.min(255, r + amount);
-  const lg = Math.min(255, g + amount);
-  const lb = Math.min(255, b + amount);
-  return `rgb(${lr},${lg},${lb})`;
-}
-
-/** Darken a hex color */
-function darken(hex: string, amount: number): string {
-  const [r, g, b] = hexToRgb(hex);
-  return `rgb(${Math.max(0, r - amount)},${Math.max(0, g - amount)},${Math.max(0, b - amount)})`;
 }
 
 export function applyTheme(theme?: string) {
@@ -71,16 +69,12 @@ export function applyTheme(theme?: string) {
   root.style.setProperty("--crm-border-input", mixWithWhite(colors.primary, 87));
   root.style.setProperty("--crm-focus-ring", mixWithWhite(colors.primary, 86));
   root.style.setProperty("--crm-focus-border", mixWithWhite(colors.primary, 45));
-  root.style.setProperty("--crm-fg", darken(colors.primary, 20));
-  root.style.setProperty("--crm-body", lighten(colors.primary, 55));
-  root.style.setProperty("--crm-secondary", lighten(colors.primary, 40));
-  root.style.setProperty("--crm-muted", lighten(colors.primary, 50));
-  root.style.setProperty("--crm-label", lighten(colors.primary, 55));
-  root.style.setProperty("--crm-faint", lighten(colors.primary, 60));
-  root.style.setProperty("--crm-placeholder", lighten(colors.primary, 65));
+  // Font colors stay fixed regardless of theme.
+  for (const [key, value] of Object.entries(FONT_COLORS)) {
+    root.style.setProperty(`--crm-${key}`, value);
+  }
   root.style.setProperty("--crm-brand", mixWithWhite(colors.primary, 30));
   root.style.setProperty("--crm-avatar-bg", mixWithWhite(colors.primary, 86));
-  root.style.setProperty("--crm-avatar-text", lighten(colors.primary, 10));
   root.style.setProperty("--crm-danger", mixWithWhite(colors.primary, 45));
   root.style.setProperty("--crm-danger-bg", mixWithWhite(colors.primary, 88));
   root.style.setProperty("--crm-danger-border", mixWithWhite(colors.primary, 78));
@@ -96,9 +90,11 @@ export function applyTheme(theme?: string) {
   root.style.setProperty("--crm-card-track", colors.cardTrack);
 }
 
-export function SettingsProvider({ children }: { children: ReactNode }) {
+export function SettingsProvider({ isGuest = false, children }: { isGuest?: boolean; children: ReactNode }) {
+  // Use lazy initializer so guest gets DEFAULT_SETTINGS without setState-in-effect
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
-  const [loading, setLoading] = useState(true);
+  // Guests load synchronously — no loading state needed
+  const [loading, setLoading] = useState(!isGuest);
 
   // Apply settings immediately whenever they change (for real-time preview)
   useEffect(() => {
@@ -106,11 +102,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     applyFontSize(settings.fontSize);
   }, [settings.theme, settings.fontSize]);
 
-  // Fetch settings from DB on mount, then apply
+  // Guests always get default settings — apply on mount via effect (external system sync)
   useEffect(() => {
+    if (isGuest) {
+      applyTheme(DEFAULT_SETTINGS.theme);
+      applyFontSize(DEFAULT_SETTINGS.fontSize);
+      return;
+    }
+
+    // Fetch settings from DB on mount, then apply
+    let cancelled = false;
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data: SiteSettings) => {
+        if (cancelled) return;
         const merged = { ...DEFAULT_SETTINGS, ...data };
         setSettings(merged);
         // Apply immediately after fetch — before React re-render
@@ -118,12 +123,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         applyFontSize(merged.fontSize);
       })
       .catch(() => {
+        if (cancelled) return;
         // Apply defaults on error
         applyTheme(DEFAULT_SETTINGS.theme);
         applyFontSize(DEFAULT_SETTINGS.fontSize);
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [isGuest]);
 
   const updateSettings = useCallback(async (patch: Partial<SiteSettings>) => {
     setSettings((prev) => ({ ...prev, ...patch }));

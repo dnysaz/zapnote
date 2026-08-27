@@ -121,20 +121,22 @@ export interface SiteSettings {
   siteName: string;
   theme: ThemeKey;
   fontSize: FontSize;
-  geminiApiKey: string;
   geminiModel: GeminiModelId;
+  /** Client-only: whether a Gemini key is saved on the server (never the raw key). */
+  hasGeminiApiKey?: boolean;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  siteName: "ViNotes",
+  siteName: "ZapNote!",
   theme: "emerald",
   fontSize: "medium",
-  geminiApiKey: "",
   geminiModel: "gemini-3.5-flash" as const,
 };
 
 export const SETTINGS_ROW_ID = "site";
 
+// Theme-switchable vars — backgrounds/borders/accents ONLY.
+// Font colors are intentionally excluded so text stays gray-800/900 in every theme.
 export const THEME_VAR_KEYS = [
   "primary",
   "dark",
@@ -143,7 +145,6 @@ export const THEME_VAR_KEYS = [
   "accent",
   "soft",
   "mid",
-  "text",
   "card",
   "cardBorder",
   "cardTrack",

@@ -2,11 +2,6 @@ import { jsPDF } from "jspdf";
 
 type RGB = [number, number, number];
 
-function hexToRgb(hex: string): RGB {
-  const c = hex.replace("#", "");
-  return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)];
-}
-
 function cssVar(name: string, fallback: RGB): RGB {
   if (typeof document === "undefined") return fallback;
   try {

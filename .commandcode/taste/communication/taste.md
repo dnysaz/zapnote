@@ -1,0 +1,2 @@
+- Prefers communicating in Bahasa Indonesia. Confidence: 0.95
+- Prefers root-cause explanations (understanding "why" something happens) over just quick fixes. Confidence: 0.8

@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSettings, applyFontSize, applyTheme } from "@/components/SettingsProvider";
 import { NotesShell } from "@/components/NotesShell";
-import { Check, CheckCircle2, Eye, EyeOff, Key, Loader2, Lock, Palette, Save, UserRound, XCircle, Zap } from "lucide-react";
+import { Check, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Palette, Save, Send, UserRound, XCircle, Zap } from "lucide-react";
 import { THEMES, GEMINI_MODELS, FONT_SIZES, type ThemeKey, type GeminiModelId, type FontSize, DEFAULT_SETTINGS } from "@/lib/settings";
 
 type ModelStatus = "idle" | "testing" | "ok" | "fail";
 
 export default function SettingsView() {
   const { settings, updateSettings, loading } = useSettings();
-  const [geminiKey, setGeminiKey] = useState(settings.geminiApiKey);
+  const [geminiKey, setGeminiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState<GeminiModelId>(settings.geminiModel || DEFAULT_SETTINGS.geminiModel);
   const [siteName, setSiteName] = useState(settings.siteName);
   const [saving, setSaving] = useState(false);
@@ -21,6 +21,7 @@ export default function SettingsView() {
   // Account profile
   const [accountName, setAccountName] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,9 +34,10 @@ export default function SettingsView() {
   useEffect(() => {
     fetch("/api/auth/account")
       .then((r) => r.json())
-      .then((d: { name?: string; email?: string }) => {
+      .then((d: { name?: string; email?: string; emailVerified?: boolean }) => {
         if (d.name !== undefined) setAccountName(d.name);
         if (d.email !== undefined) setAccountEmail(d.email);
+        if (d.emailVerified !== undefined) setEmailVerified(d.emailVerified);
       })
       .catch(() => {});
   }, []);
@@ -93,9 +95,17 @@ export default function SettingsView() {
 
   async function handleSave() {
     setSaving(true);
-    await updateSettings({ geminiApiKey: geminiKey, geminiModel, siteName, theme: selectedTheme, fontSize });
+    // Only send the API key if the user typed a new one; otherwise keep the saved key.
+    await updateSettings({
+      ...(geminiKey.trim() ? { geminiApiKey: geminiKey.trim() } : {}),
+      geminiModel,
+      siteName,
+      theme: selectedTheme,
+      fontSize,
+    });
     setSaving(false);
     setSaved(true);
+    setGeminiKey("");
     setTimeout(() => setSaved(false), 2000);
   }
 
@@ -158,7 +168,7 @@ export default function SettingsView() {
             value={siteName}
             onChange={(e) => setSiteName(e.target.value)}
             className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 py-2.5 text-sm text-(--crm-fg) outline-none focus:border-(--crm-accent)"
-            placeholder="ViNotes"
+            placeholder="ZapNote!"
           />
         </section>        {/* Theme */}
         <section className="rounded-2xl border border-(--crm-border) bg-(--crm-panel) p-6">
@@ -225,7 +235,7 @@ export default function SettingsView() {
             <Zap size={16} /> Gemini AI
           </h3>
           <p className="mb-5 text-xs text-(--crm-muted)">
-            Powers Article Generator and SWOT Analysis. Get your key at{" "}
+            Bring Your Own Key (BYOK) — powers Article Generator, SWOT Analysis, and AI features. Your key is encrypted and stored per-account. Get your key at{" "}
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="font-semibold text-(--crm-accent) underline">
               Google AI Studio
             </a>
@@ -240,7 +250,7 @@ export default function SettingsView() {
                 value={geminiKey}
                 onChange={(e) => { setGeminiKey(e.target.value); setLastTestedKey(""); }}
                 className="flex-1 rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-4 py-2.5 text-sm font-mono text-(--crm-fg) outline-none focus:border-(--crm-accent)"
-                placeholder="AIzaSy..."
+                placeholder={settings.hasGeminiApiKey ? "•••••••• (saved — leave empty to keep)" : "AIzaSy..."}
               />
               <button
                 onClick={handleTestKey}
@@ -252,7 +262,7 @@ export default function SettingsView() {
               </button>
             </div>
             <div className="mt-2 flex items-center gap-2">
-              {geminiKey ? (
+              {settings.hasGeminiApiKey || geminiKey.trim() ? (
                 <span className="flex items-center gap-1 text-[11px] font-medium text-green-600">
                   <Check size={12} /> API key set
                 </span>
@@ -334,7 +344,26 @@ export default function SettingsView() {
                 placeholder="name@email.com"
                 type="email"
               />
-              <p className="mt-1 text-[11px] text-(--crm-muted)">Email cannot be changed.</p>
+              <div className="mt-1.5 flex items-center gap-2">
+                {emailVerified ? (
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-green-600">
+                    <CheckCircle2 size={12} /> Email verified
+                  </span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/auth/send-verification", { method: "POST" });
+                        if (res.ok) alert("Verification email sent! Check your inbox.");
+                        else alert("Failed to send verification email.");
+                      } catch { alert("Failed to send verification email."); }
+                    }}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 hover:text-amber-800 hover:underline"
+                  >
+                    <Mail size={12} /> Email not verified — <Send size={10} /> resend
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Current Password */}

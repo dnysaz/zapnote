@@ -7,11 +7,12 @@ export async function GET() {
   const email = await getSessionEmail();
   if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rows = await query<AdminRow>`SELECT email, name FROM admins WHERE email = ${email}`;
+  const rows = await query<AdminRow>`SELECT email, name, email_verified FROM admins WHERE email = ${email}`;
   const admin = rows[0];
   return NextResponse.json({
     email: admin?.email ?? email,
     name: admin?.name ?? "",
+    emailVerified: admin?.email_verified ?? false,
   });
 }
 

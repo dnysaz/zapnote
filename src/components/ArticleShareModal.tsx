@@ -6,11 +6,9 @@ import { Check, Copy, Link2, X } from "lucide-react";
 
 export function ArticleShareModal({
   articleId,
-  articleTitle,
   onClose,
 }: {
   articleId: string;
-  articleTitle: string;
   onClose: () => void;
 }) {
   const [token, setToken] = useState<string | null>(null);

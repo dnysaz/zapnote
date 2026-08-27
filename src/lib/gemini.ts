@@ -1,21 +1,23 @@
-import { query } from "@/lib/db";
+import { query, type AdminRow } from "@/lib/db";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { decrypt } from "@/lib/encryption";
 
-interface SettingsRow { data: Record<string, unknown> }
-
-async function getSettings(): Promise<{ apiKey: string; model: string }> {
-  const envKey = process.env.GEMINI_API_KEY || "";
-  const envModel = process.env.GEMINI_MODEL || "";
-  if (envKey && envModel) return { apiKey: envKey, model: envModel };
+async function getUserApiKey(email: string): Promise<{ apiKey: string; model: string }> {
   try {
-    const rows = await query<SettingsRow>`SELECT data FROM settings WHERE id = 'site' LIMIT 1`;
-    const data = rows[0]?.data || {};
-    return {
-      apiKey: envKey || (typeof data.geminiApiKey === "string" ? data.geminiApiKey : ""),
-      model: envModel || (typeof data.geminiModel === "string" ? data.geminiModel : DEFAULT_SETTINGS.geminiModel),
-    };
+    const rows = await query<AdminRow>`SELECT encrypted_gemini_key, gemini_model FROM admins WHERE email = ${email} LIMIT 1`;
+    const row = rows[0];
+    if (row?.encrypted_gemini_key) {
+      try {
+        return {
+          apiKey: decrypt(row.encrypted_gemini_key),
+          model: row.gemini_model || DEFAULT_SETTINGS.geminiModel,
+        };
+      } catch {
+        // Decryption failed — key may be corrupted
+      }
+    }
   } catch { /* db not ready */ }
-  return { apiKey: envKey, model: envModel || DEFAULT_SETTINGS.geminiModel };
+  return { apiKey: "", model: DEFAULT_SETTINGS.geminiModel };
 }
 
 export interface GeminiCallOptions {
@@ -23,6 +25,10 @@ export interface GeminiCallOptions {
   userPrompt: string;
   temperature?: number;
   maxOutputTokens?: number;
+  /** Prior conversation turns for multi-turn chat (oldest first). */
+  history?: { role: "user" | "model"; text: string }[];
+  /** User email for per-user API key lookup. */
+  userEmail?: string;
 }
 
 const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.7-flash"]; // 3.6-flash removed: returns empty
@@ -31,7 +37,10 @@ async function callGeminiDirect(apiKey: string, model: string, options: GeminiCa
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const body = {
     system_instruction: { parts: [{ text: options.systemPrompt }] },
-    contents: [{ parts: [{ text: options.userPrompt }] }],
+    contents: [
+      ...(options.history ?? []).map((m) => ({ role: m.role, parts: [{ text: m.text }] })),
+      { role: "user", parts: [{ text: options.userPrompt }] },
+    ],
     generationConfig: {
       temperature: options.temperature ?? 0.7,
       maxOutputTokens: options.maxOutputTokens ?? 8192,
@@ -59,8 +68,24 @@ async function callGeminiDirect(apiKey: string, model: string, options: GeminiCa
 }
 
 export async function callGemini(options: GeminiCallOptions): Promise<string> {
-  const { apiKey, model } = await getSettings();
-  if (!apiKey) throw new Error("Gemini API key is not configured. Go to Settings to add it.");
+  // Try per-user key first (BYOK), then fall back to env var
+  let apiKey = "";
+  let model = options.userEmail ? (await getUserApiKey(options.userEmail)).model : DEFAULT_SETTINGS.geminiModel;
+
+  if (options.userEmail) {
+    const userCreds = await getUserApiKey(options.userEmail);
+    if (userCreds.apiKey) {
+      apiKey = userCreds.apiKey;
+      model = userCreds.model;
+    }
+  }
+
+  if (!apiKey) {
+    apiKey = process.env.GEMINI_API_KEY || "";
+    model = process.env.GEMINI_MODEL || model;
+  }
+
+  if (!apiKey) throw new Error("Gemini API key is not configured. Go to Settings to add your own API key.");
 
   // Build ordered list: primary model first, then fallbacks (skip duplicates)
   const models = [model, ...FALLBACK_MODELS.filter((m) => m !== model)];

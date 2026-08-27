@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check,
   Copy,
   Download,
-  FileText,
   Loader2,
+  Lock,
   PenLine,
   Plus,
-  RefreshCw,
   Search,
   Share2,
   Sparkles,
@@ -17,8 +15,10 @@ import {
   X,
 } from "lucide-react";
 import { NotesShell } from "@/components/NotesShell";
+import { useSettings } from "@/components/SettingsProvider";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { ArticleShareModal } from "@/components/ArticleShareModal";
+import { MarkdownView } from "@/components/MarkdownView";
 import type { ArticleLength, ArticleStyle } from "@/lib/prompts";
 import { buildNotePdf, downloadPdf } from "@/lib/pdf";
 import { formatDate, uid } from "@/lib/crm";
@@ -89,19 +89,49 @@ function scoreBarColor(score: number): string {
   return "bg-red-500";
 }
 
-function BreakdownBar({ label, value }: { label: string; value: number }) {
+function BreakdownChart({ breakdown }: { breakdown: Record<string, number> }) {
+  const entries = Object.entries(breakdown).slice(0, 8);
+  const gridLines = [25, 50, 75];
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-24 shrink-0 text-[0.69rem] font-medium capitalize text-(--crm-secondary)">{label}</span>
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-(--crm-border-soft)">
-        <div className={`h-full rounded-full transition-all duration-500 ${scoreBarColor(value)}`} style={{ width: `${value}%` }} />
+    <div className="mt-5 rounded-xl border border-(--crm-border-soft) bg-white p-4 pb-3">
+      {/* Plot area */}
+      <div className="relative flex items-end justify-around gap-2 px-1 sm:gap-4">
+        {/* Horizontal gridlines behind the bars */}
+        {gridLines.map((t) => (
+          <div
+            key={t}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-(--crm-border-soft)"
+            style={{ bottom: `${t}%`, height: 0 }}
+          />
+        ))}
+        {entries.map(([key, val]) => (
+          <div key={key} className="flex h-[120px] min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title={`${key}: ${val}/100`}>
+            <span className="text-[0.66rem] font-bold tabular-nums text-(--crm-fg)">{val}</span>
+            <div className="flex w-full max-w-[52px] flex-1 items-end">
+              <div
+                className={`w-full rounded-t-[4px] shadow-sm transition-all duration-700 ease-out ${scoreBarColor(val)}`}
+                style={{ height: `${Math.max(val, 2)}%` }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
-      <span className="w-8 shrink-0 text-right text-[0.69rem] font-semibold text-(--crm-fg)">{value}</span>
+      {/* X axis labels */}
+      <div className="mt-2.5 flex justify-around gap-2 border-t border-(--crm-border-soft) pt-2 sm:gap-4">
+        {entries.map(([key]) => (
+          <span key={key} className="min-w-0 flex-1 truncate text-center text-[0.6rem] font-medium capitalize tracking-wide text-(--crm-secondary)">
+            {key}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
 
 export function ArticleGenerator() {
+  const { settings } = useSettings();
+  const hasApiKey = settings.hasGeminiApiKey ?? false;
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -289,31 +319,29 @@ export function ArticleGenerator() {
   // =================== GRID VIEW ===================
   return (
     <NotesShell title="Articles" subtitle="AI content creation">
-      <div className="vn-rise flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h2 className="text-[1.625rem] font-semibold tracking-[-.04em]">Articles</h2>
-          <p className="mt-1 text-sm text-(--crm-secondary)">
-            {query.length >= 3
-              ? `${visibleArticles.length} ${visibleArticles.length === 1 ? "match" : "matches"} for "${query}"`
-              : `${sorted.length} ${sorted.length === 1 ? "article" : "articles"} generated with AI.`}
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search articles…"
-              className="w-full max-w-[240px] rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent)"
-            />
+      <div className="vn-rise">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold tracking-[-.04em] sm:text-[1.625rem]">Articles</h2>
+            <p className="mt-1 text-sm text-(--crm-secondary)">
+              {query.length >= 3
+                ? `${visibleArticles.length} ${visibleArticles.length === 1 ? "match" : "matches"} for "${query}"`
+                : `${sorted.length} ${sorted.length === 1 ? "article" : "articles"} generated with AI.`}
+            </p>
           </div>
-          <button
-            onClick={openNew}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-(--crm-primary) px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) hover:shadow-md"
-          >
-            <Plus size={16} />New Article
-          </button>
+          {hasApiKey ? (
+            <button onClick={openNew} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs">
+              <Plus size={12} />New Article
+            </button>
+          ) : (
+            <a href="/app/settings" className="flex shrink-0 items-center gap-1 rounded-md border border-dashed border-(--crm-border) bg-(--crm-panel) px-2 py-1.5 text-[0.65rem] font-semibold text-(--crm-muted) transition-colors hover:bg-(--crm-hover) sm:gap-2 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs">
+              <Lock size={12} />Add API Key
+            </a>
+          )}
+        </div>
+        <div className="relative mt-3">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search articles…" className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:max-w-[240px]" />
         </div>
       </div>
 
@@ -343,7 +371,7 @@ export function ArticleGenerator() {
           </p>
         </div>
       ) : (
-        <div className="vn-rise mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="vn-rise mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {visibleArticles.map((article) => (
             <div
               key={article.id}
@@ -353,28 +381,28 @@ export function ArticleGenerator() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openArticle(article); }
               }}
-              className="group relative flex cursor-pointer flex-col rounded-md border border-(--crm-border-soft) bg-white p-3 text-left transition-shadow duration-200 hover:shadow-[0_3px_10px_rgba(0,0,0,.10)]"
+              className="group relative flex min-h-[11rem] cursor-pointer flex-col rounded-xl border border-(--crm-border-soft) bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)]"
             >
-              <div className="flex items-start justify-between gap-1">
-                <p className="line-clamp-2 min-w-0 flex-1 text-xs font-semibold leading-4 text-(--crm-fg)">{article.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="line-clamp-2 min-w-0 flex-1 text-[0.9375rem] font-semibold leading-5 text-(--crm-fg)">{article.title}</p>
                 <button
                   onClick={(e) => { e.stopPropagation(); setConfirmDelete(article); }}
-                  className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100"
+                  className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100"
                   aria-label="Delete article"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={14} />
                 </button>
               </div>
-              <div className="my-2.5 h-px bg-(--crm-border-soft)" />
-              <p className="line-clamp-4 flex-1 text-[0.69rem] leading-4 text-(--crm-muted)">{snippet(article) || "No content."}</p>
-              <div className="mt-2.5 flex items-center gap-1.5 border-t border-(--crm-border-soft) pt-2">
-                <span className="rounded bg-(--crm-hover) px-1.5 py-0.5 text-[0.63rem] font-medium capitalize text-(--crm-secondary)">{article.length}</span>
+              <div className="my-3 h-px bg-(--crm-border-soft)" />
+              <p className="line-clamp-4 flex-1 text-[0.8125rem] leading-5 text-(--crm-secondary)">{snippet(article) || "No content."}</p>
+              <div className="mt-3 flex items-center gap-1.5 border-t border-(--crm-border-soft) pt-2.5">
+                <span className="rounded-full bg-(--crm-hover) px-2 py-0.5 text-[0.6875rem] font-medium capitalize text-(--crm-secondary)">{article.length}</span>
                 {article.humanize && (
-                  <span className={`rounded px-1.5 py-0.5 text-[0.63rem] font-semibold ${scoreColor(article.humanize.score)}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${scoreColor(article.humanize.score)}`}>
                     {article.humanize.score}% human
                   </span>
                 )}
-                <span className="ml-auto text-[0.56rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(article.updatedAt)}</span>
+                <span className="ml-auto text-[0.625rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">{formatDate(article.updatedAt)}</span>
               </div>
             </div>
           ))}
@@ -457,13 +485,9 @@ export function ArticleGenerator() {
                         />
                       </div>
 
-                      {/* Breakdown */}
+                      {/* Breakdown — vertical bar chart */}
                       {slider.humanize.breakdown && Object.keys(slider.humanize.breakdown).length > 0 && (
-                        <div className="mt-4 space-y-2.5">
-                          {Object.entries(slider.humanize.breakdown).map(([key, val]) => (
-                            <BreakdownBar key={key} label={key} value={val} />
-                          ))}
-                        </div>
+                        <BreakdownChart breakdown={slider.humanize.breakdown} />
                       )}
 
                       {/* Description */}
@@ -488,8 +512,8 @@ export function ArticleGenerator() {
                     </div>
                   )}
 
-                  {/* Article Content */}
-                  <pre className="whitespace-pre-wrap font-mono text-sm leading-6 text-(--crm-body)">{slider.content}</pre>
+                  {/* Article Content — rendered markdown */}
+                  <MarkdownView content={slider.content} className="text-sm" />
                 </div>
                 <div className="flex gap-2 border-t border-(--crm-border) px-6 py-4">
                   <button onClick={() => copyText(slider.content)} className="flex items-center gap-1.5 rounded-xl border border-(--crm-border-input) px-4 py-2 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-hover)"><Copy size={14} />{copied ? "Copied" : "Copy"}</button>
@@ -519,7 +543,6 @@ export function ArticleGenerator() {
       {shareArticle && (
         <ArticleShareModal
           articleId={shareArticle.id}
-          articleTitle={shareArticle.title}
           onClose={() => setShareArticle(null)}
         />
       )}

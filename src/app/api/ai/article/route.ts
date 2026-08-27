@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, getSessionEmail } from "@/lib/auth";
 import { callGemini } from "@/lib/gemini";
 import { ARTICLE_SYSTEM_PROMPT, LENGTH_SPECS, STYLE_SPECS, type ArticleLength, type ArticleStyle } from "@/lib/prompts";
 
@@ -17,6 +17,7 @@ export interface ArticleFormData {
 export async function POST(request: Request) {
   if (!(await requireAuth())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const email = await getSessionEmail();
     const body = (await request.json()) as Partial<ArticleFormData>;
     const topic = (body.topic || "").trim();
     const description = (body.description || "").trim();
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       spec.instructions,
     ].join("\n");
 
-    const markdown = await callGemini({ systemPrompt: ARTICLE_SYSTEM_PROMPT, userPrompt, temperature: 1.1 });
+    const markdown = await callGemini({ systemPrompt: ARTICLE_SYSTEM_PROMPT, userPrompt, temperature: 1.1, userEmail: email || undefined });
     return NextResponse.json({ markdown, topic, keyword, length, style, links, language });
   } catch (error) {
     console.error("Article generation failed:", error);

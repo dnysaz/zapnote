@@ -2,9 +2,9 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
-export const AUTH_COOKIE = process.env.NODE_ENV === "production" ? "__Host-vnotesauth" : "vnotesauth";
-const TOKEN_ISSUER = "vinotes";
-const TOKEN_AUDIENCE = "vinotes";
+export const AUTH_COOKIE = process.env.NODE_ENV === "production" ? "__Host-zapnoteauth" : "zapnoteauth";
+const TOKEN_ISSUER = "zapnote";
+const TOKEN_AUDIENCE = "zapnote";
 
 function getSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET;

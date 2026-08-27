@@ -29,6 +29,9 @@ export interface AdminRow {
   email: string;
   password_hash: string;
   name: string | null;
+  email_verified: boolean;
+  encrypted_gemini_key: string | null;
+  gemini_model: string | null;
 }
 
 function toIso(value: Date | string | null | undefined): string {

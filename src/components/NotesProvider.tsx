@@ -31,7 +31,15 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     try { setNotes(await loadNotes()); } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  // Load notes on mount — async fetch with cleanup
+  useEffect(() => {
+    let cancelled = false;
+    loadNotes()
+      .then((data) => { if (!cancelled) setNotes(data); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const mutate = useCallback(
     (apply: (prev: Note[]) => Note[], undo: (prev: Note[]) => Note[], request: () => Promise<void>) => {

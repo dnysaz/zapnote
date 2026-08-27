@@ -1,0 +1,24 @@
+- Prefers access restrictions to be genuinely enforced (blocked at route/API level), not merely hidden from the UI. Confidence: 0.7
+- Prefers configurable/dynamic inputs (e.g., adjustable counts via form) over fixed/hardcoded values. Confidence: 0.7
+- Prefers offering multiple selectable templates/options for generated output rather than a single fixed layout. Confidence: 0.6
+- Prefers soft, muted color palettes suited to Instagram/social-media posts over bold or saturated colors. Confidence: 0.7
+- Prefers reusing established UI patterns across similar views for consistency (e.g., a right-side slide-in overlay panel for editors, matching ArticleGenerator/Swot). Confidence: 0.7
+- Prefers compact form layouts where inputs aren't full-width/overly long (e.g., short fields in a narrow side column instead of spanning the full form). Confidence: 0.7
+- Prefers visual/live previews when picking style options (templates, palettes) rather than text-only or icon-only selectors. Confidence: 0.8
+- Prefers generously-sized textareas (more rows) for longer text fields like briefs/descriptions. Confidence: 0.6
+- Prefers compact primary action buttons (smaller height, auto width) over large full-width buttons. Confidence: 0.6
+- Prefers bulk/batch export — download all items as a single ZIP of JPEGs — over one-at-a-time downloads. Confidence: 0.8
+- Prefers a clear separation between "create" (form + AI generate) and "edit" (manual word/theme editing) modes — the edit view should have no generate form. Confidence: 0.8
+- Prefers stacked, linear layouts (one item per row, top to bottom) for manual editors over multi-column grids. Confidence: 0.7
+- Prefers side-by-side item editors: live preview on the left, editable text fields on the right. Confidence: 0.7
+- Prefers style/theme controls grouped at the bottom of an editor, separate from the per-item content fields. Confidence: 0.6
+- Prefers theme/style selection (template, palette, tone) to be available in the create/new form before generating, not only in the edit view. Confidence: 0.7
+- Prefers branding/appearance fields (e.g., brand name) to remain editable in the edit form, not locked to the create form. Confidence: 0.6
+- Prefers design templates/variants to be visually distinct from each other — fundamentally different silhouettes/layouts, not minor variations of the same look. Confidence: 0.7
+- Prefers a minimalist/clean aesthetic for generated social-media cards (generous whitespace, thin lines/accents, restrained typography) that still looks striking. Confidence: 0.8
+- Prefers modular, per-unit file organization for extensible/generated features (e.g., one file per theme/template — theme1.tsx, theme2.tsx — plus a registry/index) so each unit is easy to manage and extend independently. Confidence: 0.8
+- Prefers a generous variety of selectable style options — multiple fonts, colors, and distinct icon placements across variants — rather than a limited fixed set. Confidence: 0.7
+- Prefers thorough, codebase-wide renames: when a product/brand name changes, update all occurrences consistently — including internal identifiers (localStorage keys, cookie names, JWT issuer/audience) — not just user-facing display strings. Confidence: 0.6
+- Prefers larger, more legible font sizes in list/card views — finds tiny card text (text-xs / ~0.69rem body, ~0.56rem meta) too small and wants titles/body/meta enlarged for readability. Confidence: 0.8
+- Prefers a unified card/list design language across pages — when one card style is approved (e.g., notes cards), wants the same grid columns, spacing, font sizes, and hover effects applied to other list views (articles, SWOT, creator) for consistency. Confidence: 0.7
+- Prefers the application's user-facing text to be in English (English-first product targeting an English-speaking audience) — and even wants non-user-facing strings like code comments, doc comments, and AI prompt templates in English — even though he communicates with the assistant in Bahasa Indonesia. Confidence: 0.85

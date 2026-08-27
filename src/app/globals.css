@@ -10,7 +10,7 @@
   --crm-accent: #c9e979;
   --crm-soft: #d7e9d7;
   --crm-mid: #477f67;
-  --crm-text: #2b604e;
+  --crm-text: #1f2937; /* fixed gray-800 */
   --crm-card: #214a41;
   --crm-card-border: #3a665a;
   --crm-card-track: #386257;
@@ -24,17 +24,18 @@
   --crm-border-input: color-mix(in srgb, var(--crm-primary) 13%, #ffffff);
   --crm-focus-ring: color-mix(in srgb, var(--crm-primary) 14%, #ffffff);
   --crm-focus-border: color-mix(in srgb, var(--crm-primary) 55%, #ffffff);
-  --crm-fg: #1c2220;
-  --crm-body: #4b5550;
-  --crm-secondary: #66706c;
-  --crm-muted: #828b87;
-  --crm-label: #919a96;
-  --crm-faint: #a4aca8;
-  --crm-placeholder: #b0b7b4;
+  /* Fixed font colors — do NOT follow the theme (gray-800/900 based). */
+  --crm-fg: #111827; /* gray-900 */
+  --crm-body: #1f2937; /* gray-800 */
+  --crm-secondary: #374151; /* gray-700 */
+  --crm-muted: #6b7280; /* gray-500 */
+  --crm-label: #9ca3af; /* gray-400 */
+  --crm-faint: #a3aab2;
+  --crm-placeholder: #d1d5db; /* gray-300 */
   --crm-brand: color-mix(in srgb, var(--crm-primary) 70%, #8fa89c);
 
   --crm-avatar-bg: color-mix(in srgb, var(--crm-primary) 14%, #ffffff);
-  --crm-avatar-text: #3a4541;
+  --crm-avatar-text: #374151; /* fixed gray-700 */
 
   --crm-danger: color-mix(in srgb, var(--crm-primary) 55%, #b04848);
   --crm-danger-hover: color-mix(in srgb, var(--crm-primary) 62%, #8f3636);
@@ -65,12 +66,60 @@
 
 html {
   font-size: calc(16px * var(--vn-scale));
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* Mobile: prevent zoom on input focus — iOS Safari zooms when font-size < 16px */
+@media (max-width: 640px) {
+  input, textarea, select, [contenteditable] {
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+  }
+  /* Prevent pinch zoom on the whole app */
+  html {
+    touch-action: pan-x pan-y;
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+/* Full PWA: standalone mode tweaks */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Note editor mobile optimizations */
+@media (max-width: 768px) {
+  .note-editor {
+    min-height: 50vh;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    -webkit-overflow-scrolling: touch;
+  }
+  .note-editor:empty::before {
+    font-size: 0.95rem;
+  }
+}
+
+/* Safe area padding for iOS */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 @keyframes crm-fade-in {
@@ -79,3 +128,10 @@ body {
 }
 
 .crm-fade-in { animation: crm-fade-in 0.25s ease both; }
+
+@keyframes crm-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.crm-slide-in { animation: crm-slide-in 0.35s cubic-bezier(.2,.75,.25,1) both; }

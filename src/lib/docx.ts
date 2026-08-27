@@ -68,7 +68,7 @@ export async function buildNoteDocxBlob(info: { title: string; content: string }
   }
 
   const doc = new Document({
-    creator: "ViNotes",
+    creator: "ZapNote!",
     title: info.title,
     styles: { default: { document: { run: { font: "Calibri", size: 22 } } } },
     sections: [{ children }],

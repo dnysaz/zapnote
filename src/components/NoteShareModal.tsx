@@ -1,23 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Check, Copy, Link2, X } from "lucide-react";
 
 export function NoteShareModal({
   noteId,
-  noteTitle,
   onClose,
 }: {
   noteId: string;
-  noteTitle: string;
   onClose: () => void;
 }) {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Create share token
   useEffect(() => {

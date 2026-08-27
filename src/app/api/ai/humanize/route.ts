@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { callGemini } from "@/lib/gemini";
 import { HUMANIZE_SYSTEM_PROMPT } from "@/lib/prompts";
+import { getSessionEmail } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const email = await getSessionEmail();
     const { content } = (await request.json()) as { content: string };
     if (!content?.trim()) {
       return NextResponse.json({ error: "Content is required" }, { status: 400 });
@@ -18,6 +20,7 @@ export async function POST(request: Request) {
       userPrompt: trimmed,
       temperature: 0.3,
       maxOutputTokens: 512,
+      userEmail: email || undefined,
     });
 
     // Parse JSON from response

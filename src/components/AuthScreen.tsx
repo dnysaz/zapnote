@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Eye, EyeOff, Globe, Lock, UserRound } from "lucide-react";
-import { useSettings } from "@/components/SettingsProvider";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
 
 type Props = {
-  adminExists: boolean;
   onLogin: (email: string, password: string) => Promise<void>;
   onRegister: (email: string, password: string) => Promise<void>;
   onGuest: () => void;
@@ -30,9 +30,9 @@ function PasswordField({ value, onChange, placeholder }: { value: string; onChan
   );
 }
 
-export function AuthScreen({ adminExists, onLogin, onRegister, onGuest }: Props) {
-  const { settings } = useSettings();
-  const [mode, setMode] = useState<"login" | "register">(adminExists ? "login" : "register");
+export function AuthScreen({ onLogin, onRegister, onGuest }: Props) {
+  const settings = DEFAULT_SETTINGS;
+  const [mode, setMode] = useState<"login" | "register">("register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -71,18 +71,6 @@ export function AuthScreen({ adminExists, onLogin, onRegister, onGuest }: Props)
             <button type="button" onClick={() => { setMode("register"); setError(""); }} className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-colors ${mode === "register" ? "bg-(--crm-surface) text-(--crm-text) shadow-sm" : "text-(--crm-muted)"}`}>Register</button>
           </div>
 
-          {mode === "register" && (
-            <p className="mb-5 rounded-xl bg-(--crm-hover) px-4 py-3 text-xs leading-5 text-(--crm-secondary)">
-              Create an <strong>admin</strong> account. After registration, only login will be shown.
-            </p>
-          )}
-
-          {mode === "login" && !adminExists && (
-            <p className="mb-5 rounded-xl bg-(--crm-hover) px-4 py-3 text-xs leading-5 text-(--crm-secondary)">
-              No account yet? Switch to <strong>Register</strong> to create one, or continue as guest.
-            </p>
-          )}
-
           {/* Email/Password form */}
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="relative">
@@ -91,6 +79,13 @@ export function AuthScreen({ adminExists, onLogin, onRegister, onGuest }: Props)
                 className="h-12 w-full rounded-xl border border-(--crm-border-input) bg-(--crm-surface) pl-10 pr-3 text-sm outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-focus-border) focus:ring-2 focus:ring-(--crm-focus-ring)" />
             </div>
             <PasswordField value={password} onChange={setPassword} placeholder={mode === "register" ? "Create password (min. 8 chars)" : "Password"} />
+            {mode === "login" && (
+              <div className="flex justify-end">
+                <Link href="/forgot-password" className="text-[11px] font-semibold text-(--crm-brand) hover:underline">
+                  Forgot Password?
+                </Link>
+              </div>
+            )}
             {mode === "register" && <PasswordField value={confirm} onChange={setConfirm} placeholder="Confirm password" />}
             {error && <p className="rounded-xl bg-(--crm-hover) px-4 py-3 text-xs font-medium text-(--crm-danger)">{error}</p>}
             <button type="submit" disabled={busy}

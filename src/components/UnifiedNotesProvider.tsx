@@ -2,9 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { Note } from "@/lib/crm";
+import { normalizeNote, type Note } from "@/lib/crm";
 
-const GUEST_STORAGE_KEY = "vinotes:guest-notes";
+const GUEST_STORAGE_KEY = "zapnote:guest-notes";
 
 type NotesContextValue = {
   notes: Note[];
@@ -21,7 +21,7 @@ function loadGuestNotes(): Note[] {
     const raw = localStorage.getItem(GUEST_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? parsed.map(normalizeNote) : [];
   } catch { return []; }
 }
 
@@ -30,19 +30,20 @@ function saveGuestNotes(notes: Note[]) {
 }
 
 export function UnifiedNotesProvider({ isGuest, children }: { isGuest: boolean; children: ReactNode }) {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use lazy initializer for guest mode to avoid setState-in-effect.
+  // For auth mode, empty array is fine since we load from API.
+  const [notes, setNotes] = useState<Note[]>(() => (typeof window !== "undefined" ? loadGuestNotes() : []));
+  // Guests load synchronously — no loading state needed
+  const [loading, setLoading] = useState(!isGuest);
   const [guestLoaded, setGuestLoaded] = useState(false);
   const dataRef = useRef(notes);
 
   useEffect(() => { dataRef.current = notes; }, [notes]);
 
-  // Guest mode: load from localStorage once we know it's guest
+  // Guest mode: mark as loaded after initial render so save effect can start
   useEffect(() => {
     if (isGuest) {
-      setNotes(loadGuestNotes());
-      setLoading(false);
-      // Mark loaded AFTER setting notes, so save effect doesn't run first
+      // Mark loaded AFTER mount, so save effect doesn't run first
       requestAnimationFrame(() => setGuestLoaded(true));
     }
   }, [isGuest]);
@@ -55,11 +56,13 @@ export function UnifiedNotesProvider({ isGuest, children }: { isGuest: boolean; 
   // Auth mode: load from API
   useEffect(() => {
     if (!isGuest) {
+      let cancelled = false;
       fetch("/api/notes")
         .then((r) => r.json())
-        .then((data: Note[]) => setNotes(data))
+        .then((data: Note[]) => { if (!cancelled) setNotes(data); })
         .catch(() => {})
-        .finally(() => setLoading(false));
+        .finally(() => { if (!cancelled) setLoading(false); });
+      return () => { cancelled = true; };
     }
   }, [isGuest]);
 

@@ -1,0 +1,4 @@
+- Wants the assistant to study/explore the actual project codebase before proposing solutions. Confidence: 0.8
+- Runs multiple AI agents concurrently on the same project; expects the assistant to check for and reconcile other agents' work-in-progress rather than assume sole ownership of the codebase. Confidence: 0.7
+- Prefers create/generate flows to auto-save and return to the main list view, surfacing results there instead of inline in the form; dislikes empty-state placeholders inside create forms. Confidence: 0.7
+- Wants cross-cutting/global changes applied exhaustively and verified end-to-end: sweep the whole codebase for every affected occurrence, cover non-user-facing strings too, then confirm with a final search plus typecheck/build. Confidence: 0.7

@@ -6,8 +6,8 @@ import { AuthScreen } from "@/components/AuthScreen";
 
 type Session =
   | { status: "loading" }
-  | { status: "guest"; adminExists: boolean }
-  | { status: "authed"; email: string; name: string }
+  | { status: "guest" }
+  | { status: "authed"; email: string; name: string; emailVerified: boolean }
   | { status: "anonymous" };
 
 type AuthContextValue = {
@@ -16,31 +16,48 @@ type AuthContextValue = {
   register: (email: string, password: string) => Promise<void>;
   loginAsGuest: () => void;
   logout: () => Promise<void>;
+  resendVerification: () => Promise<void>;
+  markEmailVerified: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const GUEST_KEY = "vinotes:guest";
+const GUEST_KEY = "zapnote:guest";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>({ status: "loading" });
 
   useEffect(() => {
-    // Check if user chose guest mode previously
-    try {
-      if (localStorage.getItem(GUEST_KEY) === "1") {
-        setSession({ status: "anonymous" });
-        return;
-      }
-    } catch {}
+    let cancelled = false;
 
     void fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((data: { authed: boolean; email?: string; name?: string; adminExists: boolean }) => {
-        if (data.authed) setSession({ status: "authed", email: data.email ?? "", name: data.name ?? "" });
-        else setSession({ status: "guest", adminExists: data.adminExists });
+      .then((data: { authed: boolean; email?: string; name?: string; emailVerified?: boolean }) => {
+        if (cancelled) return;
+        if (data.authed) {
+          try { localStorage.removeItem(GUEST_KEY); } catch {}
+          setSession({ status: "authed", email: data.email ?? "", name: data.name ?? "", emailVerified: data.emailVerified ?? false });
+          return;
+        }
+        try {
+          if (localStorage.getItem(GUEST_KEY) === "1") {
+            setSession({ status: "anonymous" });
+            return;
+          }
+        } catch {}
+        setSession({ status: "guest" });
       })
-      .catch(() => setSession({ status: "guest", adminExists: true }));
+      .catch(() => {
+        try {
+          if (localStorage.getItem(GUEST_KEY) === "1") {
+            if (!cancelled) setSession({ status: "anonymous" });
+            return;
+          }
+        } catch {}
+        if (!cancelled) setSession({ status: "guest" });
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   async function postAuth(path: string, body: unknown) {
@@ -52,12 +69,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const { email: authedEmail, name } = await postAuth("/api/auth/login", { email, password });
-    setSession({ status: "authed", email: authedEmail, name });
+    try { localStorage.removeItem(GUEST_KEY); } catch {}
+    // Fetch email_verified status after login
+    let emailVerified = false;
+    try {
+      const meRes = await fetch("/api/auth/me");
+      const meData = await meRes.json() as { emailVerified?: boolean };
+      emailVerified = meData.emailVerified ?? false;
+    } catch {}
+    setSession({ status: "authed", email: authedEmail, name, emailVerified });
   };
 
   const register = async (email: string, password: string) => {
     const { email: authedEmail, name } = await postAuth("/api/auth/register", { email, password });
-    setSession({ status: "authed", email: authedEmail, name });
+    try { localStorage.removeItem(GUEST_KEY); } catch {}
+    // New registration → email not verified yet
+    setSession({ status: "authed", email: authedEmail, name, emailVerified: false });
   };
 
   const loginAsGuest = useCallback(() => {
@@ -70,13 +97,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {}
-    // Guest: keep GUEST_KEY so notes persist, just show login screen again
-    // Auth: clear everything
     if (!wasGuest) {
       try { localStorage.removeItem(GUEST_KEY); } catch {}
     }
-    setSession({ status: "guest", adminExists: true });
+    setSession({ status: "guest" });
   };
+
+  const resendVerification = async () => {
+    const res = await fetch("/api/auth/send-verification", { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json() as { error?: string };
+      throw new Error(data.error || "Failed to send verification email.");
+    }
+  };
+
+  const markEmailVerified = useCallback(() => {
+    setSession((prev) => prev.status === "authed" ? { ...prev, emailVerified: true } : prev);
+  }, []);
 
   if (session.status === "loading") {
     return (
@@ -87,14 +124,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   if (session.status === "guest") {
-    return <AuthScreen adminExists={session.adminExists} onLogin={login} onRegister={register} onGuest={loginAsGuest} />;
+    return <AuthScreen onLogin={login} onRegister={register} onGuest={loginAsGuest} />;
   }
 
-  if (session.status === "anonymous") {
-    return <AuthContext.Provider value={{ session, login, register, loginAsGuest, logout }}>{children}</AuthContext.Provider>;
-  }
-
-  return <AuthContext.Provider value={{ session, login, register, loginAsGuest, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ session, login, register, loginAsGuest, logout, resendVerification, markEmailVerified }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
