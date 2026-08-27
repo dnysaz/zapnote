@@ -250,7 +250,7 @@ export function SwotAnalysis() {
           </p>
         </div>
       ) : (
-        <div className="vn-rise mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="vn-rise mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           {visible.map((a) => (
             <div
               key={a.id}
@@ -260,7 +260,7 @@ export function SwotAnalysis() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(a); }
               }}
-              className="group relative flex min-h-[11rem] cursor-pointer flex-col rounded-xl border border-(--crm-border-soft) bg-white p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)]"
+              className="group relative flex aspect-[4/5] cursor-pointer flex-col overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)] sm:aspect-[4/5] sm:p-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="line-clamp-2 min-w-0 flex-1 text-[0.9375rem] font-semibold leading-5 text-(--crm-fg)">{a.title}</p>

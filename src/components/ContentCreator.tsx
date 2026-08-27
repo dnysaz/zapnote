@@ -361,7 +361,7 @@ export function ContentCreator() {
             </p>
           </div>
         ) : (
-          <div className="vn-rise mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="vn-rise mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
             {carousels.map((c) => {
               const pal = getPalette(c.palette);
               const tpl = getTheme(c.template);
@@ -369,7 +369,7 @@ export function ContentCreator() {
               return (
                 <div key={c.id} onClick={() => openSaved(c)} role="button" tabIndex={0}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSaved(c); } }}
-                  className="group relative flex min-h-[12rem] cursor-pointer flex-col overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)]"
+                  className="group relative flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)] sm:aspect-[4/5]"
                 >
                   <div className="relative h-32 shrink-0" style={{ background: c.tone === "light" ? pal.lightBg : pal.darkBg }}>
                     {first && (
