@@ -104,7 +104,7 @@ export function NotesView() {
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
   const PAGE_H = 1123;
-  const PAGE_PAD = 48;
+  const PAGE_PAD = 72;
   const PAGE_CONTENT_H = PAGE_H - PAGE_PAD * 2;
 
   function enforcePagination() {
@@ -586,7 +586,7 @@ export function NotesView() {
                   {i < pageCount - 1 && <div className="absolute inset-x-0 bottom-0 h-px bg-gray-200" />}
                 </div>
               ))}
-              <div ref={paperRef} className="relative px-14 py-12">
+              <div ref={paperRef} className="relative px-[64px] py-[72px]">
                 <input value={editor.title} onChange={(e) => updateDraft({ title: e.target.value })} placeholder="Untitled note" maxLength={160} className="w-full bg-transparent text-4xl font-bold tracking-tight text-gray-900 outline-none placeholder:text-gray-300" />
                 <div className="my-6 h-px bg-gray-100" />
                 <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => { updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML }); setTimeout(enforcePagination, 0); }} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
@@ -685,7 +685,7 @@ export function NotesView() {
                     {i < pageCount - 1 && <div className="absolute inset-x-0 bottom-0 h-px bg-gray-200" />}
                   </div>
                 ))}
-                <div ref={paperRef} className="relative px-6 py-8 sm:px-14 sm:py-12">
+                <div ref={paperRef} className="relative px-[64px] py-[72px]">
                 <input
                   value={editor.title}
                   onChange={(event) => updateDraft({ title: event.target.value })}
