@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Copy, CornerDownLeft, FilePlus2, Loader2, Lock, Sparkles, X } from "lucide-react";
+import { Copy, CornerDownLeft, FilePlus2, Loader2, Lock, Sparkles, User, Wand2, X } from "lucide-react";
 import { MarkdownView } from "@/components/MarkdownView";
 import { useSettings } from "@/components/SettingsProvider";
 
@@ -202,64 +202,55 @@ export function NoteAiPanel({
 
   return (
     <div className="fixed inset-0 z-[75] flex justify-end">
-      <div className="crm-fade-in absolute inset-0 bg-(--crm-dark)/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="crm-slide-in relative flex h-full w-full max-w-[480px] flex-col border-l border-(--crm-border) bg-(--crm-panel) shadow-2xl">
-
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-(--crm-border) px-5 py-4">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--crm-primary) text-white shadow-sm">
-              <Sparkles size={15} />
+      <div className="absolute inset-0 bg-gray-900/25 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative flex h-full w-full max-w-[440px] flex-col overflow-hidden rounded-l-[20px] border-l border-white/20 bg-white shadow-[-12px_0_40px_rgba(0,0,0,.12)]">
+        <div className="flex items-center justify-between bg-white px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md">
+              <Sparkles size={16} />
             </span>
             <div>
-              <h3 className="text-sm font-semibold text-(--crm-fg)">AI Assistant</h3>
-              <p className="text-[0.69rem] text-(--crm-muted)">Interactive chat about this note</p>
+              <h3 className="text-[0.95rem] font-bold tracking-tight text-gray-900">AI Assistant</h3>
+              <p className="text-[0.68rem] font-medium text-gray-400">Interactive chat about this note</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             {messages.length > 0 && (
-              <button
-                onClick={() => { setMessages([]); setError(""); }}
-                className="mr-1 rounded-lg px-2 py-1 text-[0.69rem] font-semibold text-(--crm-muted) transition-colors hover:bg-(--crm-hover) hover:text-(--crm-fg)"
-                title="Clear conversation"
-              >
-                Clear
-              </button>
+              <button onClick={() => { setMessages([]); setError(""); }} className="rounded-full px-3 py-1 text-xs font-semibold text-gray-400 hover:bg-gray-100 hover:text-gray-600">Clear</button>
             )}
-            <button onClick={onClose} className="rounded-lg p-1 text-(--crm-muted) hover:bg-(--crm-hover)" aria-label="Close AI panel"><X size={16} /></button>
+            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Close AI panel"><X size={14} /></button>
           </div>
         </div>
+        <div className="h-px bg-gray-100" />
 
-        {/* Conversation */}
-        <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          {/* AI always greets first */}
-          <div className="flex justify-start">
-            <div className="w-full max-w-[95%] rounded-2xl rounded-bl-sm border border-(--crm-border) bg-(--crm-surface) px-3.5 py-3 shadow-sm">
-              <MarkdownView
-                content={buildGreeting(userName ?? "", noteContent)}
-                className="text-sm [&_p]:my-1.5 [&_ul]:my-2 [&_li]:my-0.5"
-              />
+        <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto bg-[#fafafb] px-4 py-5 sm:px-5">
+          <div className="flex gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white shadow-sm"><Wand2 size={12} /></span>
+            <div className="flex-1 rounded-[18px] rounded-tl-[6px] border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_6px_rgba(0,0,0,.06)]">
+              <MarkdownView content={buildGreeting(userName ?? "", noteContent)} className="text-[0.84rem] leading-6 text-gray-700 [&_p]:my-1.5 [&_ul]:my-2 [&_li]:my-1 [&_li]:flex [&_li]:gap-1.5 [&_strong]:text-gray-900" />
             </div>
           </div>
 
           {messages.map((msg, index) =>
             msg.role === "user" ? (
-              <div key={index} className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-(--crm-primary) px-3.5 py-2 text-xs leading-5 text-white shadow-sm">{msg.text}</div>
+              <div key={index} className="flex justify-end gap-2">
+                <div className="max-w-[78%] rounded-[18px] rounded-br-[6px] bg-gradient-to-br from-violet-600 to-indigo-600 px-4 py-2.5 text-[0.84rem] leading-6 text-white shadow-md">{msg.text}</div>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white"><User size={12} /></span>
               </div>
             ) : (
-              <div key={index} className="flex justify-start">
-                <div className="w-full max-w-[95%] overflow-x-auto rounded-2xl rounded-bl-sm border border-(--crm-border) bg-(--crm-surface) px-3.5 py-3">
-                  <MarkdownView content={msg.text} className="text-sm [&_table]:text-xs [&_table]:my-2 [&_p]:my-1.5" />
-                  <div className="mt-2 flex gap-1.5 border-t border-(--crm-border-soft) pt-2">
-                    <button onClick={() => void copyResult(msg.text, index)} className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.63rem] font-semibold text-(--crm-secondary) hover:bg-(--crm-hover)">
-                      <Copy size={11} />{copiedIdx === index ? "Copied" : "Copy"}
+              <div key={index} className="flex gap-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-violet-600 shadow-sm ring-1 ring-gray-100"><Sparkles size={12} /></span>
+                <div className="flex-1 overflow-hidden rounded-[18px] rounded-tl-[6px] border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_6px_rgba(0,0,0,.06)]">
+                  <MarkdownView content={msg.text} className="text-[0.84rem] leading-6 text-gray-700 [&_table]:text-xs [&_table]:my-2 [&_p]:my-1.5 [&_strong]:text-gray-900" />
+                  <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-50 pt-3">
+                    <button onClick={() => void copyResult(msg.text, index)} className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50">
+                      <Copy size={11} />{copiedIdx === index ? "Copied ✓" : "Copy"}
                     </button>
-                    <button onClick={() => onInsert(msg.text)} className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.63rem] font-semibold text-(--crm-brand) hover:bg-(--crm-hover)">
-                      <CornerDownLeft size={11} />Insert to note
+                    <button onClick={() => onInsert(msg.text)} className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-black">
+                      <CornerDownLeft size={11} />Insert
                     </button>
                     {onSaveAsNote && (
-                      <button onClick={() => onSaveAsNote(msg.text, messages)} className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.63rem] font-semibold text-(--crm-brand) hover:bg-(--crm-hover)">
+                      <button onClick={() => onSaveAsNote(msg.text, messages)} className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 hover:bg-violet-100">
                         <FilePlus2 size={11} />New note
                       </button>
                     )}
@@ -269,68 +260,43 @@ export function NoteAiPanel({
             ),
           )}
 
-          {error && (
-            <p className="rounded-xl bg-(--crm-danger-bg) px-4 py-3 text-xs font-medium text-(--crm-danger)">{error}</p>
-          )}
+          {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-xs font-medium text-red-600 ring-1 ring-red-100">{error}</p>}
 
           {loading && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-(--crm-border) bg-(--crm-surface) px-4 py-3">
-                {[0, 1, 2].map((i) => (
-                  <span key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-(--crm-mid)" style={{ animationDelay: `${i * 150}ms` }} />
-                ))}
+            <div className="flex gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-violet-600 shadow-sm ring-1 ring-gray-100"><Sparkles size={12} /></span>
+              <div className="flex items-center gap-1.5 rounded-[18px] rounded-tl-[6px] border border-gray-100 bg-white px-5 py-4 shadow-sm">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400" style={{ animationDelay: "150ms" }} />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-400" style={{ animationDelay: "300ms" }} />
               </div>
             </div>
           )}
         </div>
 
-        {/* Composer */}
-        <div className="border-t border-(--crm-border) px-5 py-4">
+        <div className="border-t border-gray-100 bg-white px-4 py-4 sm:px-5">
           {!hasApiKey ? (
-            <a href="/app/settings" className="flex items-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50 px-4 py-3 text-xs font-semibold text-violet-500 transition-colors hover:bg-violet-100">
-              <Lock size={14} />
-              Add your Gemini API key in Settings to use AI features.
+            <a href="/app/settings" className="flex items-center gap-2 rounded-2xl border border-dashed border-violet-200 bg-violet-50/70 px-4 py-3 text-xs font-semibold text-violet-600 hover:bg-violet-50">
+              <Lock size={14} />Add your Gemini API key in Settings to use AI
             </a>
           ) : (
             <>
               {messages.length === 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
+                <div className="mb-3 flex flex-wrap gap-1.5">
                   {PRESETS.map((p) => (
-                    <button
-                      key={p.label}
-                      type="button"
-                      onClick={() => void send(p.command)}
-                      disabled={loading}
-                      className="rounded-full border border-(--crm-border-input) bg-(--crm-surface) px-3 py-1.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-hover) disabled:opacity-60"
-                    >
+                    <button key={p.label} type="button" onClick={() => void send(p.command)} disabled={loading} className="rounded-full bg-gray-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-black disabled:opacity-50">
                       {p.label}
                     </button>
                   ))}
                 </div>
               )}
-              <div className="relative">
-                <textarea
-                  value={command}
-                  onChange={(e) => setCommand(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void send(command);
-                    }
-                  }}
-                  rows={2}
-                  placeholder="Ask anything about this note… (Enter to send, Shift+Enter for new line)"
-                  className="w-full resize-none rounded-xl border border-(--crm-border-input) bg-(--crm-surface) px-3 py-2 pr-11 text-sm leading-6 text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-focus-border) focus:ring-2 focus:ring-(--crm-focus-ring)"
-                />
-                <button
-                  onClick={() => void send(command)}
-                  disabled={!command.trim() || loading}
-                  className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg bg-(--crm-primary) text-white shadow-sm transition-all hover:bg-(--crm-dark) disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Send message"
-                >
-                  {loading ? <Loader2 size={13} className="animate-spin" /> : <CornerDownLeft size={13} />}
+              <div className="relative rounded-[16px] border border-gray-200 bg-gray-50 p-2 shadow-inner focus-within:border-violet-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-violet-100 transition-all">
+                <textarea value={command} onChange={(e) => setCommand(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(command); } }} rows={2} placeholder="Ask anything about this note…" className="w-full resize-none bg-transparent px-2 py-1 pr-10 text-sm leading-6 text-gray-800 outline-none placeholder:text-gray-400" />
+                <button onClick={() => void send(command)} disabled={!command.trim() || loading} className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 text-white shadow-md hover:bg-violet-700 disabled:opacity-40" aria-label="Send">
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : <CornerDownLeft size={14} />}
                 </button>
               </div>
+              <p className="mt-2 text-center text-[0.62rem] font-medium text-gray-400">Enter to send · Shift+Enter new line</p>
             </>
           )}
         </div>
