@@ -103,99 +103,6 @@ export function NotesView() {
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const PAGE_H = 1123;
-  const PAGE_PAD = 72;
-  const GAP = 24;
-  const PAGE_CONTENT_H = PAGE_H - PAGE_PAD * 2;
-
-  function enforcePagination() {
-    const node = contentRef.current;
-    const paperEl = paperRef.current;
-    if (!node || !paperEl) return;
-    const h = node.scrollHeight;
-    const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
-    if (needed !== pageCount) setPageCount(Math.min(20, needed));
-    const sel = window.getSelection();
-    const anchor = sel?.anchorNode as HTMLElement | null;
-    const caretChild = anchor ? (anchor.nodeType === 1 ? anchor as HTMLElement : anchor.parentElement) : null;
-    const caretDiv = caretChild ? (caretChild.closest("div") as HTMLElement | null) : null;
-    const last = (caretDiv && node.contains(caretDiv) ? caretDiv : node.lastElementChild) as HTMLElement | null;
-    if (!last || (last as HTMLElement).dataset.pageBreak === "1") return;
-    const baseRect = paperEl.getBoundingClientRect();
-    const lastRect = last.getBoundingClientRect();
-    const absTop = lastRect.top - baseRect.top;
-    const stride = PAGE_H + GAP;
-    const pageIdx = Math.floor(absTop / stride);
-    const pageTop = pageIdx * stride;
-    const pageContentEnd = pageTop + PAGE_H - PAGE_PAD;
-    const bottom = absTop + last.offsetHeight;
-    if (absTop < pageContentEnd - 80) return;
-    if (absTop >= pageContentEnd - 2 || bottom > pageContentEnd) {
-      const remaining = pageContentEnd - absTop;
-      if (last.offsetHeight > remaining + 20 && last.textContent && last.textContent.length > 20) {
-        const text = last.textContent || "";
-        const style = getComputedStyle(last);
-        const measurer = document.createElement("div");
-        measurer.style.position = "absolute";
-        measurer.style.visibility = "hidden";
-        measurer.style.width = last.offsetWidth + "px";
-        measurer.style.font = style.font;
-        measurer.style.lineHeight = style.lineHeight;
-        measurer.style.whiteSpace = "pre-wrap";
-        measurer.style.wordBreak = "break-word";
-        document.body.appendChild(measurer);
-        let low = 0, high = text.length, best = 0;
-        while (low <= high) {
-          const mid = Math.floor((low + high) / 2);
-          measurer.textContent = text.slice(0, mid);
-          if (measurer.offsetHeight <= remaining) { best = mid; low = mid + 1; } else high = mid - 1;
-        }
-        document.body.removeChild(measurer);
-        if (best > 0 && best < text.length) {
-          const first = text.slice(0, best);
-          const second = text.slice(best);
-          last.textContent = first;
-          const newDiv = document.createElement("div");
-          newDiv.textContent = second;
-          const spacer = document.createElement("div");
-          spacer.dataset.pageBreak = "1";
-          spacer.contentEditable = "false";
-          spacer.style.height = `${PAGE_H - remaining + PAGE_PAD}px`;
-          spacer.style.pointerEvents = "none";
-          node.insertBefore(spacer, last.nextSibling);
-          node.insertBefore(newDiv, spacer.nextSibling);
-          const cleanHtml = node.innerHTML.replace(/<div[^>]*data-page-break[^>]*>.*?<\/div>/g, "");
-          updateDraft({ content: cleanHtml });
-          requestAnimationFrame(() => newDiv.scrollIntoView({ block: "nearest" }));
-          setTimeout(() => {
-            const nh = node.scrollHeight;
-            setPageCount(Math.min(20, Math.max(1, Math.ceil((nh + 40) / PAGE_CONTENT_H))));
-          }, 10);
-          return;
-        }
-      }
-      const exp = (pageIdx + 1) * stride + PAGE_PAD;
-      const spacerH = exp - absTop;
-      if (spacerH <= 0 || spacerH > PAGE_H) return;
-      const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
-      const spacer = document.createElement("div");
-      spacer.dataset.pageBreak = "1";
-      spacer.contentEditable = "false";
-      spacer.style.height = `${spacerH}px`;
-      spacer.style.pointerEvents = "none";
-      node.insertBefore(spacer, last);
-      if (range && sel) { try { sel.removeAllRanges(); sel.addRange(range); } catch {} }
-      requestAnimationFrame(() => {
-        last.scrollIntoView({ block: "nearest" });
-        const scroller = node.closest(".overflow-y-auto") as HTMLElement | null;
-        if (scroller) scroller.scrollTop = last.offsetTop - 20;
-      });
-      setTimeout(() => {
-        const nh = node.scrollHeight;
-        setPageCount(Math.min(20, Math.max(1, Math.ceil((nh + 40) / PAGE_CONTENT_H))));
-      }, 10);
-    }
-  }
 
   const draftKey = isGuest ? GUEST_DRAFT_KEY : DRAFT_KEY;
 
@@ -307,19 +214,6 @@ export function NotesView() {
     return { words, chars, charsNoSpace };
   }, [editor?.content]);
 
-  const [pageCount, setPageCount] = useState(1);
-  useEffect(() => {
-    if (!editor) return;
-    const id = window.setTimeout(() => enforcePagination(), 80);
-    return () => window.clearTimeout(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor?.id]);
-  useEffect(() => {
-    const h = contentRef.current?.scrollHeight ?? 0;
-    const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
-    if (needed !== pageCount) setPageCount(Math.min(20, needed));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor?.content]);
 
   function handleUploadHtml(html: string, title?: string) {
     setEditor((prev) => prev ? { ...prev, content: html, ...(title ? { title } : {}) } : { id: null, title: title || "Untitled note", content: html });
@@ -641,8 +535,8 @@ export function NotesView() {
           <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#e9eaed] p-6 md:block">
             <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
               <div className="pointer-events-none absolute inset-0" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
-              <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)` } as React.CSSProperties}>
-                <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => { updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML }); setTimeout(enforcePagination, 0); }} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
+              <div ref={paperRef} className="relative px-[64px] py-[72px]">
+                <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML })} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
               </div>
             </div>
             <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
@@ -739,7 +633,7 @@ export function NotesView() {
             <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
               <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
               <div className="pointer-events-none absolute inset-0" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
-              <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)` } as React.CSSProperties}>
+              <div ref={paperRef} className="relative px-[64px] py-[72px]">
                 <div
                   ref={contentRef}
                   contentEditable
@@ -747,7 +641,7 @@ export function NotesView() {
                   role="textbox"
                   aria-multiline="true"
                   data-ph="Start writing…"
-                  onInput={(event) => { updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML }); setTimeout(enforcePagination, 0); }}
+                  onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
                   className="note-editor min-h-[40vh] flex-1 bg-transparent text-[0.9375rem] leading-7 text-(--crm-fg) outline-none sm:text-base sm:leading-8 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
                 />
               </div>
