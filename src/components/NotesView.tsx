@@ -111,11 +111,13 @@ export function NotesView() {
     const node = contentRef.current;
     if (!node) return;
     const sel = window.getSelection();
-    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+    const anchor = sel?.anchorNode as HTMLElement | null;
+    const caretChild = anchor ? (anchor.nodeType === 1 ? anchor as HTMLElement : anchor.parentElement) : null;
+    const caretDiv = caretChild ? (caretChild.closest("div") as HTMLElement | null) : null;
+    const candidates: HTMLElement[] = caretDiv && node.contains(caretDiv) && !caretDiv.dataset.pageBreak ? [caretDiv] : Array.from(node.children) as HTMLElement[];
     const baseTop = node.offsetTop;
-    const children = Array.from(node.children) as HTMLElement[];
-    for (const child of children) {
-      if (child.dataset.pageBreak === "1") continue;
+    for (const child of candidates) {
+      if ((child as HTMLElement).dataset.pageBreak === "1") continue;
       const absTop = baseTop + child.offsetTop;
       const pageIdx = Math.floor(absTop / PAGE_H);
       const pageContentEnd = pageIdx * PAGE_H + PAGE_H - PAGE_PAD;
@@ -123,6 +125,7 @@ export function NotesView() {
       const bottom = absTop + child.offsetHeight;
       if (absTop < pageContentStart) continue;
       if (absTop >= pageContentEnd - 2 || (bottom > pageContentEnd && absTop < pageContentEnd)) {
+        const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
         const nextIdx = pageIdx + 1;
         const exp = nextIdx * PAGE_H + PAGE_PAD;
         const spacerH = exp - absTop;
@@ -132,27 +135,19 @@ export function NotesView() {
         spacer.contentEditable = "false";
         spacer.style.height = `${spacerH}px`;
         spacer.style.pointerEvents = "none";
-        spacer.style.userSelect = "none";
         node.insertBefore(spacer, child);
-        if (range && sel) {
-          try { sel.removeAllRanges(); sel.addRange(range); } catch {}
-        }
+        if (range && sel) { try { sel.removeAllRanges(); sel.addRange(range); } catch {} }
         requestAnimationFrame(() => {
-          child.scrollIntoView({ block: "nearest", inline: "nearest" });
+          child.scrollIntoView({ block: "nearest" });
           const scroller = node.closest(".overflow-y-auto") as HTMLElement | null;
           if (scroller) scroller.scrollTop = child.offsetTop + baseTop - PAGE_PAD - 20;
         });
         setTimeout(() => {
           const h = node.scrollHeight;
-          const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
-          setPageCount(Math.min(20, needed));
+          setPageCount(Math.min(20, Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H))));
         }, 10);
         return;
       }
-    }
-    const spacers = node.querySelectorAll('[data-page-break="1"]');
-    if (spacers.length > 5) {
-      spacers.forEach((el, idx) => { if (idx >= 5) (el as HTMLElement).remove(); });
     }
   }
 
@@ -269,14 +264,16 @@ export function NotesView() {
   const [pageCount, setPageCount] = useState(1);
   useEffect(() => {
     if (!editor) return;
-    const id = window.setTimeout(() => {
-      const h = contentRef.current?.scrollHeight ?? 0;
-      const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
-      setPageCount(Math.min(20, needed));
-    }, 50);
+    const id = window.setTimeout(() => enforcePagination(), 80);
     return () => window.clearTimeout(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor?.content, editor?.title, editor?.id]);
+  }, [editor?.id]);
+  useEffect(() => {
+    const h = contentRef.current?.scrollHeight ?? 0;
+    const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
+    if (needed !== pageCount) setPageCount(Math.min(20, needed));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor?.content]);
 
   function handleUploadHtml(html: string, title?: string) {
     setEditor((prev) => prev ? { ...prev, content: html, ...(title ? { title } : {}) } : { id: null, title: title || "Untitled note", content: html });
