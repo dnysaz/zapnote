@@ -110,12 +110,10 @@ export function NotesView() {
   function enforcePagination() {
     const node = contentRef.current;
     if (!node) return;
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
     const baseTop = node.offsetTop;
     const children = Array.from(node.children) as HTMLElement[];
-    const existing = node.querySelectorAll('[data-page-break="1"]');
-    if (existing.length > 3) {
-      existing.forEach((el, idx) => { if (idx > 0) (el as HTMLElement).remove(); });
-    }
     for (const child of children) {
       if (child.dataset.pageBreak === "1") continue;
       const absTop = baseTop + child.offsetTop;
@@ -134,15 +132,27 @@ export function NotesView() {
         spacer.contentEditable = "false";
         spacer.style.height = `${spacerH}px`;
         spacer.style.pointerEvents = "none";
+        spacer.style.userSelect = "none";
         node.insertBefore(spacer, child);
-        updateDraft({ content: node.innerHTML });
+        if (range && sel) {
+          try { sel.removeAllRanges(); sel.addRange(range); } catch {}
+        }
         requestAnimationFrame(() => {
-          child.scrollIntoView({ block: "center" });
-          const scroller = document.querySelector(".overflow-y-auto") as HTMLElement | null;
-          scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+          child.scrollIntoView({ block: "nearest", inline: "nearest" });
+          const scroller = node.closest(".overflow-y-auto") as HTMLElement | null;
+          if (scroller) scroller.scrollTop = child.offsetTop + baseTop - PAGE_PAD - 20;
         });
+        setTimeout(() => {
+          const h = node.scrollHeight;
+          const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
+          setPageCount(Math.min(20, needed));
+        }, 10);
         return;
       }
+    }
+    const spacers = node.querySelectorAll('[data-page-break="1"]');
+    if (spacers.length > 5) {
+      spacers.forEach((el, idx) => { if (idx >= 5) (el as HTMLElement).remove(); });
     }
   }
 
