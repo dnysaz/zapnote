@@ -129,6 +129,7 @@ export function NotesView() {
     const pageTop = pageIdx * stride;
     const pageContentEnd = pageTop + PAGE_H - PAGE_PAD;
     const bottom = absTop + last.offsetHeight;
+    if (absTop < pageContentEnd - 80) return;
     if (absTop >= pageContentEnd - 2 || bottom > pageContentEnd) {
       const remaining = pageContentEnd - absTop;
       if (last.offsetHeight > remaining + 20 && last.textContent && last.textContent.length > 20) {
