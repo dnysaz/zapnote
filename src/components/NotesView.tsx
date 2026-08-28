@@ -116,11 +116,13 @@ export function NotesView() {
     const caretChild = anchor ? (anchor.nodeType === 1 ? anchor as HTMLElement : anchor.parentElement) : null;
     const caretDiv = caretChild ? (caretChild.closest("div") as HTMLElement | null) : null;
     const candidates: HTMLElement[] = caretDiv && node.contains(caretDiv) && !caretDiv.dataset.pageBreak ? [caretDiv] : Array.from(node.children) as HTMLElement[];
-    const baseTop = node.offsetTop;
+    const paperEl = paperRef.current;
+    const baseRect = paperEl ? paperEl.getBoundingClientRect() : null;
     const stride = PAGE_H + GAP;
     for (const child of candidates) {
       if ((child as HTMLElement).dataset.pageBreak === "1") continue;
-      const absTop = baseTop + child.offsetTop;
+      const childRect = child.getBoundingClientRect();
+      const absTop = baseRect ? childRect.top - baseRect.top : child.offsetTop;
       const pageIdx = Math.floor(absTop / stride);
       const pageTop = pageIdx * stride;
       const pageContentEnd = pageTop + PAGE_H - PAGE_PAD;
@@ -143,7 +145,7 @@ export function NotesView() {
         requestAnimationFrame(() => {
           child.scrollIntoView({ block: "nearest" });
           const scroller = node.closest(".overflow-y-auto") as HTMLElement | null;
-          if (scroller) scroller.scrollTop = child.offsetTop + baseTop - PAGE_PAD - 20;
+          if (scroller) scroller.scrollTop = pageTop - 20;
         });
         setTimeout(() => {
           const h = node.scrollHeight;
