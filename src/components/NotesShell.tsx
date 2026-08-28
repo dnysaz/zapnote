@@ -21,7 +21,7 @@ const navItems = [
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export function NotesShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+export function NotesShell({ title, subtitle, children, headerExtra }: { title: string; subtitle: string; children: ReactNode; headerExtra?: ReactNode }) {
   const [mobileNav, setMobileNav] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [minimized, setMinimized] = useState(() => {
@@ -159,6 +159,7 @@ export function NotesShell({ title, subtitle, children }: { title: string; subti
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              {headerExtra && <div className="flex">{headerExtra}</div>}
               {isGuest && <span className="hidden items-center gap-1 rounded-full border border-dashed border-(--crm-border) bg-(--crm-hover) px-2 py-0.5 text-[0.6rem] font-semibold text-(--crm-muted) sm:flex"><Globe size={10} />Guest</span>}
               <div className="hidden h-5 w-px bg-(--crm-border) sm:block" />
               <div className="flex items-center gap-2">

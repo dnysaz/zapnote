@@ -121,10 +121,13 @@ export function NotesView() {
       const absTop = baseTop + child.offsetTop;
       const pageIdx = Math.floor(absTop / PAGE_H);
       const pageContentEnd = pageIdx * PAGE_H + PAGE_H - PAGE_PAD;
+      const pageContentStart = pageIdx * PAGE_H + PAGE_PAD;
       const bottom = absTop + child.offsetHeight;
-      if (bottom > pageContentEnd && absTop < pageContentEnd) {
-        const expectedTop = (pageIdx + 1) * PAGE_H + PAGE_PAD;
-        const spacerH = expectedTop - absTop;
+      if (absTop < pageContentStart) continue;
+      if (absTop >= pageContentEnd - 2 || (bottom > pageContentEnd && absTop < pageContentEnd)) {
+        const nextIdx = pageIdx + 1;
+        const exp = nextIdx * PAGE_H + PAGE_PAD;
+        const spacerH = exp - absTop;
         if (spacerH <= 0 || spacerH > PAGE_H) continue;
         const spacer = document.createElement("div");
         spacer.dataset.pageBreak = "1";
@@ -133,6 +136,11 @@ export function NotesView() {
         spacer.style.pointerEvents = "none";
         node.insertBefore(spacer, child);
         updateDraft({ content: node.innerHTML });
+        requestAnimationFrame(() => {
+          child.scrollIntoView({ block: "center" });
+          const scroller = document.querySelector(".overflow-y-auto") as HTMLElement | null;
+          scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+        });
         return;
       }
     }
@@ -587,8 +595,6 @@ export function NotesView() {
                 </div>
               ))}
               <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)` } as React.CSSProperties}>
-                <input value={editor.title} onChange={(e) => updateDraft({ title: e.target.value })} placeholder="Untitled note" maxLength={160} className="w-full bg-transparent text-4xl font-bold tracking-tight text-gray-900 outline-none placeholder:text-gray-300" />
-                <div className="my-6 h-px bg-gray-100" />
                 <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => { updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML }); setTimeout(enforcePagination, 0); }} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
               </div>
             </div>
@@ -599,14 +605,7 @@ export function NotesView() {
           <div className="flex flex-1 flex-col md:hidden">
             <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 pt-12 pb-20">
               <div className="flex w-full flex-col">
-                <input
-                  value={editor.title}
-                  onChange={(event) => updateDraft({ title: event.target.value })}
-                  placeholder="Untitled note"
-                  maxLength={160}
-                  className="w-full bg-transparent text-2xl font-bold tracking-tight text-gray-900 outline-none placeholder:text-gray-300"
-                />
-                <div className="my-4 h-px bg-gray-100" />
+                <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm outline-none placeholder:text-gray-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-100" />
                 <div
                   contentEditable
                   suppressContentEditableWarning
@@ -650,7 +649,19 @@ export function NotesView() {
 
     // ---- Normal editor (inside NotesShell) ----
     return (
-      <NotesShell title="Notes" subtitle="Project notes">
+      <NotesShell
+        title="Notes"
+        subtitle="Project notes"
+        headerExtra={
+          <input
+            value={editor.title}
+            onChange={(e) => updateDraft({ title: e.target.value })}
+            placeholder="Untitled document"
+            maxLength={80}
+            className="w-[120px] rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm outline-none placeholder:text-gray-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-100 sm:w-[200px] lg:w-[260px]"
+          />
+        }
+      >
         <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
           <EditorToolbar
@@ -686,14 +697,6 @@ export function NotesView() {
                   </div>
                 ))}
                 <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)` } as React.CSSProperties}>
-                <input
-                  value={editor.title}
-                  onChange={(event) => updateDraft({ title: event.target.value })}
-                  placeholder="Untitled note"
-                  maxLength={160}
-                  className="mb-2 w-full bg-transparent text-xl font-bold tracking-[-.03em] text-(--crm-fg) outline-none placeholder:text-(--crm-placeholder) sm:text-3xl"
-                />
-                <div className="mb-4 h-px bg-(--crm-border-soft) sm:mb-5" />
                 <div
                   ref={contentRef}
                   contentEditable
