@@ -261,8 +261,7 @@ export function NotesView() {
     if (!editor) return;
     const id = window.setTimeout(() => {
       const h = contentRef.current?.scrollHeight ?? 0;
-      const titleH = 80;
-      const needed = Math.max(1, Math.ceil((h + titleH + 160) / 980));
+      const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
       setPageCount(Math.min(20, needed));
     }, 50);
     return () => window.clearTimeout(id);
@@ -605,7 +604,7 @@ export function NotesView() {
           <div className="flex flex-1 flex-col md:hidden">
             <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 pt-12 pb-20">
               <div className="flex w-full flex-col">
-                <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm outline-none placeholder:text-gray-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-100" />
+                <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none" />
                 <div
                   contentEditable
                   suppressContentEditableWarning
@@ -658,7 +657,8 @@ export function NotesView() {
             onChange={(e) => updateDraft({ title: e.target.value })}
             placeholder="Untitled document"
             maxLength={80}
-            className="w-[120px] rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm outline-none placeholder:text-gray-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-100 sm:w-[200px] lg:w-[260px]"
+            className="w-full max-w-[280px] border-0 border-b border-gray-300 bg-transparent px-1 py-1.5 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none"
+
           />
         }
       >

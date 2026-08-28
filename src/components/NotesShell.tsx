@@ -151,15 +151,15 @@ export function NotesShell({ title, subtitle, children, headerExtra }: { title: 
         <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           {/* Header — compact on mobile */}
           <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-(--crm-border) bg-(--crm-surface) px-4 shadow-[0_1px_0_rgba(0,0,0,.03)] sm:h-[76px] sm:px-8">
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
               <button className="rounded-lg p-1.5 hover:bg-(--crm-hover) md:hidden" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu size={20} /></button>
-              <div>
+              <div className="hidden shrink-0 sm:block">
                 <p className="text-[0.6rem] font-medium uppercase tracking-[.16em] text-(--crm-muted) sm:text-[0.69rem]">{subtitle}</p>
                 <h1 className="mt-0.5 text-base font-semibold tracking-[-.03em] sm:text-xl">{title}</h1>
               </div>
+              {headerExtra && <div className="flex min-w-0 flex-1 max-w-[320px]">{headerExtra}</div>}
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              {headerExtra && <div className="flex">{headerExtra}</div>}
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               {isGuest && <span className="hidden items-center gap-1 rounded-full border border-dashed border-(--crm-border) bg-(--crm-hover) px-2 py-0.5 text-[0.6rem] font-semibold text-(--crm-muted) sm:flex"><Globe size={10} />Guest</span>}
               <div className="hidden h-5 w-px bg-(--crm-border) sm:block" />
               <div className="flex items-center gap-2">
