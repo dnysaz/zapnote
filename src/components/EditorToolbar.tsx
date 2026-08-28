@@ -169,7 +169,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
   const sep = "mx-1 h-5 w-px shrink-0 bg-(--crm-border)";
 
   return (
-    <div className="sticky top-0 z-30 w-full border-b border-(--crm-border) bg-white shadow-[0_1px_3px_rgba(0,0,0,.06)]">
+    <div className="sticky top-0 z-30 w-full shrink-0 border-b border-(--crm-border) bg-white shadow-[0_1px_3px_rgba(0,0,0,.06)]">
       <div className="flex items-center gap-1 border-b border-(--crm-border-soft) bg-(--crm-surface) px-2 py-1 text-xs">
         <button onClick={props.onBack} className="flex items-center gap-1.5 rounded-md px-2 py-1 font-medium text-(--crm-secondary) hover:bg-(--crm-soft) hover:text-(--crm-fg)">
           <ArrowLeft size={14} /> Back
