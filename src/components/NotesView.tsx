@@ -543,7 +543,7 @@ export function NotesView() {
             onDownloadWord={() => void downloadWord()}
             announce={announce}
           />
-          <div className="hidden flex-1 overflow-y-auto bg-[#f0f1f3] p-6 md:block">
+          <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#f0f1f3] p-6 md:block">
             <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123}px` }}>
               {Array.from({ length: pageCount }).map((_, i) => (
                 <div key={i} className="absolute inset-x-0 bg-white border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,.06)]" style={{ top: i * 1123, height: 1123 }}>
@@ -618,7 +618,7 @@ export function NotesView() {
     return (
       <NotesShell title="Notes" subtitle="Project notes">
         <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
-        <div className="flex flex-1 flex-col overflow-hidden bg-[#f0f1f3]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f0f1f3]">
           <EditorToolbar
             title={editor.title}
             html={editor.content}
@@ -642,7 +642,7 @@ export function NotesView() {
             onDownloadWord={() => void downloadWord()}
             announce={announce}
           />
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-0 sm:p-6">
               <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123}px` }}>
                 {Array.from({ length: pageCount }).map((_, i) => (
