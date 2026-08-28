@@ -6,13 +6,11 @@ import {
   Italic,
   List,
   ListOrdered,
-  Lock,
   Minimize2,
   Plus,
   Search,
   Sparkles,
   StickyNote,
-  Strikethrough,
   Trash2,
   Underline,
   Undo2,
@@ -214,6 +212,19 @@ export function NotesView() {
     const charsNoSpace = plain.replace(/\s/g, "").length;
     return { words, chars, charsNoSpace };
   }, [editor?.content]);
+
+  const [pageCount, setPageCount] = useState(1);
+  useEffect(() => {
+    if (!editor) return;
+    const id = window.setTimeout(() => {
+      const h = contentRef.current?.scrollHeight ?? 0;
+      const titleH = 80;
+      const needed = Math.max(1, Math.ceil((h + titleH + 160) / 980));
+      setPageCount(Math.min(20, needed));
+    }, 50);
+    return () => window.clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor?.content, editor?.title, editor?.id]);
 
   function handleUploadHtml(html: string, title?: string) {
     setEditor((prev) => prev ? { ...prev, content: html, ...(title ? { title } : {}) } : { id: null, title: title || "Untitled note", content: html });
@@ -506,55 +517,46 @@ export function NotesView() {
   if (editor) {
     // ---- Fullscreen mode ----
     if (fullscreen) {
-      const fsToolbarBtn = "flex items-center justify-center rounded-lg p-2.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700";
-      const fsSep = "my-1 w-6 h-px bg-gray-200";
       const fsToolbarBtnMobile = "flex items-center justify-center rounded-lg p-2 text-gray-400 transition-colors active:bg-gray-100 active:text-gray-700";
       return (
         <div className="fixed inset-0 z-[80] flex flex-col bg-white">
-          <div className="hidden flex-1 md:flex">
-            <div className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-gray-100 py-4">
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("bold")} className={fsToolbarBtn} title="Bold"><Bold size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("italic")} className={fsToolbarBtn} title="Italic"><Italic size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("underline")} className={fsToolbarBtn} title="Underline"><Underline size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("strikeThrough")} className={fsToolbarBtn} title="Strikethrough"><Strikethrough size={17} /></button>
-              <div className={fsSep} />
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertUnorderedList")} className={fsToolbarBtn} title="Bullet list"><List size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertOrderedList")} className={fsToolbarBtn} title="Numbered list"><ListOrdered size={17} /></button>
-              <div className={fsSep} />
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("undo")} className={fsToolbarBtn} title="Undo"><Undo2 size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("redo")} className={fsToolbarBtn} title="Redo"><Redo2 size={17} /></button>
-              <div className="flex-1" />
-              <div className={fsSep} />
-              {hasApiKey ? (
-                <button onClick={() => setAiOpen(true)} className={`${fsToolbarBtn} text-violet-500`} title="AI Assistant"><Sparkles size={17} /></button>
-              ) : (
-                <a href="/app/settings" className={`${fsToolbarBtn} text-violet-300`} title="Add Gemini API key in Settings"><Lock size={17} /></a>
-              )}
-              <button onClick={handleNewNote} className={fsToolbarBtn} title="New note"><Plus size={17} /></button>
-              <button onClick={() => setFullscreen(false)} className={fsToolbarBtn} title="Exit fullscreen (Esc)"><Minimize2 size={17} /></button>
-            </div>
-            <div className="flex flex-1 items-start justify-center overflow-y-auto px-10 py-10">
-              <div className="flex w-full max-w-[780px] flex-col">
-                <input
-                  value={editor.title}
-                  onChange={(event) => updateDraft({ title: event.target.value })}
-                  placeholder="Untitled note"
-                  maxLength={160}
-                  className="w-full bg-transparent text-5xl font-bold tracking-tight text-gray-900 outline-none placeholder:text-gray-300"
-                />
+          <EditorToolbar
+            title={editor.title}
+            html={editor.content}
+            hasApiKey={hasApiKey}
+            isGuest={isGuest}
+            hasActiveNote={!!editor.id}
+            smartBusy={smartBusy}
+            wordStats={wordStats}
+            contentRef={contentRef}
+            onContentChange={(html) => updateDraft({ content: html })}
+            onUploadHtml={handleUploadHtml}
+            onBack={() => setFullscreen(false)}
+            onNewNote={handleNewNote}
+            onShare={handleShare}
+            onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+            onFullscreen={() => setFullscreen(false)}
+            onAiOpen={() => setAiOpen(true)}
+            onRunSmart={() => void runSmart()}
+            onDownloadTxt={downloadTxt}
+            onDownloadPdf={() => void downloadPdf()}
+            onDownloadWord={() => void downloadWord()}
+            announce={announce}
+          />
+          <div className="hidden flex-1 overflow-y-auto bg-[#f0f1f3] p-6 md:block">
+            <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123 + (pageCount - 1) * 24}px` }}>
+              {Array.from({ length: pageCount }).map((_, i) => (
+                <div key={i} className="absolute inset-x-0 bg-white shadow-[0_2px_8px_rgba(0,0,0,.08)] border border-gray-200" style={{ top: i * (1123 + 24), height: 1123 }}>
+                  <span className="absolute bottom-2 right-6 select-none text-[0.55rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
+                </div>
+              ))}
+              <div className="relative px-14 py-12">
+                <input value={editor.title} onChange={(e) => updateDraft({ title: e.target.value })} placeholder="Untitled note" maxLength={160} className="w-full bg-transparent text-4xl font-bold tracking-tight text-gray-900 outline-none placeholder:text-gray-300" />
                 <div className="my-6 h-px bg-gray-100" />
-                <div
-                  ref={contentRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  role="textbox"
-                  aria-multiline="true"
-                  data-ph="Start writing…"
-                  onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
-                  className="note-editor min-h-[50vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
-                />
+                <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML })} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
               </div>
             </div>
+            <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
           </div>
 
           {/* Mobile: Full-screen editor with bottom toolbar */}
@@ -615,7 +617,7 @@ export function NotesView() {
     return (
       <NotesShell title="Notes" subtitle="Project notes">
         <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
-        <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
+        <div className="flex flex-1 flex-col overflow-hidden bg-[#f0f1f3]">
           <EditorToolbar
             title={editor.title}
             html={editor.content}
@@ -640,8 +642,14 @@ export function NotesView() {
             announce={announce}
           />
           <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-0 sm:p-5">
-              <div className="mx-auto flex min-h-full w-full max-w-[900px] flex-col bg-white p-4 shadow-sm sm:rounded-xl sm:border sm:border-(--crm-border) sm:p-8">
+            <div className="flex-1 overflow-y-auto p-0 sm:p-6">
+              <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123 + (pageCount - 1) * 24}px` }}>
+                {Array.from({ length: pageCount }).map((_, i) => (
+                  <div key={i} className="absolute inset-x-0 bg-white shadow-[0_1px_6px_rgba(0,0,0,.08)] border border-gray-200" style={{ top: i * (1123 + 24), height: 1123, borderRadius: 1 }}>
+                    <span className="absolute bottom-2 right-6 select-none text-[0.55rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
+                  </div>
+                ))}
+                <div className="relative px-6 py-8 sm:px-14 sm:py-12">
                 <input
                   value={editor.title}
                   onChange={(event) => updateDraft({ title: event.target.value })}
@@ -695,6 +703,7 @@ export function NotesView() {
             </div>
           </div>
           <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
+        </div>
         </div>
 
         {confirmModal}

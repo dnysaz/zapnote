@@ -210,7 +210,6 @@ export function EditorToolbar(props: EditorToolbarProps) {
         </div>
         <div className="ml-auto hidden items-center gap-2 sm:flex">
           <span className="rounded-full bg-(--crm-soft) px-2.5 py-0.5 text-[0.62rem] font-semibold text-(--crm-secondary)">{props.wordStats.words} words · {props.wordStats.charsNoSpace} chars</span>
-          <button onClick={props.onFullscreen} className="rounded-md p-1 text-(--crm-muted) hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Fullscreen"><Maximize2 size={14} /></button>
         </div>
       </div>
 
@@ -305,18 +304,15 @@ export function EditorToolbar(props: EditorToolbarProps) {
         </div>
       </div>
 
-      <div className="hidden h-5 items-center border-t border-(--crm-border-soft) bg-[#f8f9fb] px-3 sm:flex">
-        <div className="flex w-full items-center gap-0.5 overflow-hidden">
-          {Array.from({ length: 38 }).map((_, i) => (
+      <div className="hidden h-7 items-center justify-center border-t border-(--crm-border-soft) bg-[#f8f9fb] sm:flex">
+        <div className="relative flex h-full w-full max-w-[794px] items-end justify-between gap-px overflow-hidden border-x border-white bg-[#f8f9fb] px-6">
+          {Array.from({ length: 21 }).map((_, i) => (
             <div key={i} className="flex flex-col items-center">
-              <div className={i % 5 === 0 ? "h-3 w-px bg-gray-400" : "h-1.5 w-px bg-gray-300"} />
-              {i % 5 === 0 && <span className="mt-0.5 text-[0.5rem] leading-none text-gray-400">{i}</span>}
+              <div className={i % 5 === 0 ? "h-4 w-px bg-gray-500" : i % 1 === 0 ? "h-2.5 w-px bg-gray-300" : "h-1.5 w-px bg-gray-300"} />
+              {i % 5 === 0 && <span className="mt-0.5 text-[0.48rem] font-medium leading-none text-gray-500">{i * 1}</span>}
             </div>
           ))}
-          <div className="ml-auto flex items-center gap-3 text-[0.62rem] font-medium text-(--crm-muted)">
-            <span className="hidden xl:inline">Tab: indent • Ruler guide</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-violet-500" /> AI ready</span>
-          </div>
+          <div className="pointer-events-none absolute inset-x-6 top-[46%] h-px bg-gray-200" />
         </div>
       </div>
     </div>
