@@ -578,15 +578,15 @@ export function NotesView() {
             onDownloadWord={() => void downloadWord()}
             announce={announce}
           />
-          <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#f0f1f3] p-6 md:block">
+          <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#e9eaed] p-6 md:block">
             <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123}px` }}>
               {Array.from({ length: pageCount }).map((_, i) => (
-                <div key={i} className="absolute inset-x-0 bg-white border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,.06)]" style={{ top: i * 1123, height: 1123 }}>
-                  <span className="absolute bottom-2 right-6 select-none text-[0.55rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
-                  {i < pageCount - 1 && <div className="absolute inset-x-0 bottom-0 h-px bg-gray-200" />}
+                <div key={i} className="absolute inset-x-0 bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ top: i * 1123, height: 1123 }}>
+                  <div className="absolute inset-0 border border-gray-100 pointer-events-none" style={{ margin: '72px 64px', borderStyle: 'dashed', borderColor: 'rgba(0,0,0,0.08)' }} />
+                  <span className="absolute bottom-3 right-8 select-none text-[0.6rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
                 </div>
               ))}
-              <div ref={paperRef} className="relative px-[64px] py-[72px]">
+              <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)` } as React.CSSProperties}>
                 <input value={editor.title} onChange={(e) => updateDraft({ title: e.target.value })} placeholder="Untitled note" maxLength={160} className="w-full bg-transparent text-4xl font-bold tracking-tight text-gray-900 outline-none placeholder:text-gray-300" />
                 <div className="my-6 h-px bg-gray-100" />
                 <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => { updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML }); setTimeout(enforcePagination, 0); }} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
@@ -652,7 +652,7 @@ export function NotesView() {
     return (
       <NotesShell title="Notes" subtitle="Project notes">
         <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f0f1f3]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
           <EditorToolbar
             title={editor.title}
             html={editor.content}
@@ -677,15 +677,15 @@ export function NotesView() {
             announce={announce}
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-0 sm:p-6">
+            <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
               <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123}px` }}>
                 {Array.from({ length: pageCount }).map((_, i) => (
-                  <div key={i} className="absolute inset-x-0 bg-white border border-gray-200 shadow-[0_1px_6px_rgba(0,0,0,.06)]" style={{ top: i * 1123, height: 1123 }}>
-                    <span className="absolute bottom-2 right-6 select-none text-[0.55rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
-                    {i < pageCount - 1 && <div className="absolute inset-x-0 bottom-0 h-px bg-gray-200" />}
+                  <div key={i} className="absolute inset-x-0 bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ top: i * 1123, height: 1123 }}>
+                    <div className="absolute inset-0 pointer-events-none" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
+                    <span className="absolute bottom-3 right-8 select-none text-[0.6rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
                   </div>
                 ))}
-                <div ref={paperRef} className="relative px-[64px] py-[72px]">
+                <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 8px, black 8px ${PAGE_H - 8}px, transparent ${PAGE_H - 8}px ${PAGE_H}px)` } as React.CSSProperties}>
                 <input
                   value={editor.title}
                   onChange={(event) => updateDraft({ title: event.target.value })}
