@@ -2,22 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Bold,
-  ChevronDown,
-  FileDown,
-  FileText,
-  FileImage,
   Italic,
-  Link2,
-  Loader2,
   List,
   ListOrdered,
   Lock,
-  Maximize2,
   Minimize2,
   Plus,
-  Redo2,
   Search,
   Sparkles,
   StickyNote,
@@ -25,6 +16,7 @@ import {
   Trash2,
   Underline,
   Undo2,
+  Redo2,
   Wand2,
   X,
 } from "lucide-react";
@@ -35,6 +27,7 @@ import { useSettings } from "@/components/SettingsProvider";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
 import { NoteAiPanel } from "@/components/NoteAiPanel";
+import { EditorToolbar, EditorStatusBar } from "@/components/EditorToolbar";
 import type { Note, NoteActionItem } from "@/lib/crm";
 import { formatDate, uid } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
@@ -100,7 +93,6 @@ export function NotesView() {
   const [draftSaved, setDraftSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
   const [shareNote, setShareNote] = useState<{ id: string; title: string } | null>(null);
-  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [smartBusy, setSmartBusy] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -208,25 +200,33 @@ export function NotesView() {
     markSaved();
   }
 
+  function execCmd(command: string, value?: string) {
+    contentRef.current?.focus();
+    try { document.execCommand(command, false, value); } catch {}
+    const node = contentRef.current;
+    if (node && node.innerHTML !== editor?.content) updateDraft({ content: node.innerHTML });
+  }
+
+  const wordStats = useMemo(() => {
+    const plain = toPlainText(editor?.content || "");
+    const words = plain ? plain.split(/\s+/).filter(Boolean).length : 0;
+    const chars = plain.length;
+    const charsNoSpace = plain.replace(/\s/g, "").length;
+    return { words, chars, charsNoSpace };
+  }, [editor?.content]);
+
+  function handleUploadHtml(html: string, title?: string) {
+    setEditor((prev) => prev ? { ...prev, content: html, ...(title ? { title } : {}) } : { id: null, title: title || "Untitled note", content: html });
+    if (contentRef.current) contentRef.current.innerHTML = html;
+    markSaved();
+  }
+
   function openNote(note: Note) {
     setEditor({ id: note.id, title: note.title, content: note.content });
   }
 
   function openNew() {
     setEditor({ id: null, title: "", content: "" });
-  }
-
-  function exec(command: string, value?: string) {
-    contentRef.current?.focus();
-    try {
-      document.execCommand(command, false, value);
-    } catch {
-      // unsupported command — ignore
-    }
-    const node = contentRef.current;
-    if (node && node.innerHTML !== editor?.content) {
-      updateDraft({ content: node.innerHTML });
-    }
   }
 
   /** Save the current note (if non-empty) then open a blank note. */
@@ -264,7 +264,6 @@ export function NotesView() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    setSaveMenuOpen(false);
     announce("Saved as .txt");
   }
 
@@ -276,7 +275,6 @@ export function NotesView() {
       content: editor.content,
     });
     downloadPdf(doc, `${editor.title.trim() || "Untitled note"}.pdf`);
-    setSaveMenuOpen(false);
     announce("Saved as PDF");
   }
 
@@ -295,7 +293,6 @@ export function NotesView() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    setSaveMenuOpen(false);
     announce("Saved as Word");
   }
 
@@ -514,19 +511,18 @@ export function NotesView() {
       const fsToolbarBtnMobile = "flex items-center justify-center rounded-lg p-2 text-gray-400 transition-colors active:bg-gray-100 active:text-gray-700";
       return (
         <div className="fixed inset-0 z-[80] flex flex-col bg-white">
-          {/* Desktop: Vertical toolbar — left side */}
           <div className="hidden flex-1 md:flex">
             <div className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-gray-100 py-4">
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("bold")} className={fsToolbarBtn} title="Bold"><Bold size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("italic")} className={fsToolbarBtn} title="Italic"><Italic size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("underline")} className={fsToolbarBtn} title="Underline"><Underline size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("strikeThrough")} className={fsToolbarBtn} title="Strikethrough"><Strikethrough size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("bold")} className={fsToolbarBtn} title="Bold"><Bold size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("italic")} className={fsToolbarBtn} title="Italic"><Italic size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("underline")} className={fsToolbarBtn} title="Underline"><Underline size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("strikeThrough")} className={fsToolbarBtn} title="Strikethrough"><Strikethrough size={17} /></button>
               <div className={fsSep} />
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertUnorderedList")} className={fsToolbarBtn} title="Bullet list"><List size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertOrderedList")} className={fsToolbarBtn} title="Numbered list"><ListOrdered size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertUnorderedList")} className={fsToolbarBtn} title="Bullet list"><List size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertOrderedList")} className={fsToolbarBtn} title="Numbered list"><ListOrdered size={17} /></button>
               <div className={fsSep} />
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("undo")} className={fsToolbarBtn} title="Undo"><Undo2 size={17} /></button>
-              <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("redo")} className={fsToolbarBtn} title="Redo"><Redo2 size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("undo")} className={fsToolbarBtn} title="Undo"><Undo2 size={17} /></button>
+              <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("redo")} className={fsToolbarBtn} title="Redo"><Redo2 size={17} /></button>
               <div className="flex-1" />
               <div className={fsSep} />
               {hasApiKey ? (
@@ -589,15 +585,15 @@ export function NotesView() {
             <div className="fixed bottom-0 left-0 right-0 z-[85] border-t border-gray-100 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2">
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-0.5 overflow-x-auto">
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("bold")} className={fsToolbarBtnMobile} title="Bold"><Bold size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("italic")} className={fsToolbarBtnMobile} title="Italic"><Italic size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("underline")} className={fsToolbarBtnMobile} title="Underline"><Underline size={16} /></button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("bold")} className={fsToolbarBtnMobile} title="Bold"><Bold size={16} /></button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("italic")} className={fsToolbarBtnMobile} title="Italic"><Italic size={16} /></button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("underline")} className={fsToolbarBtnMobile} title="Underline"><Underline size={16} /></button>
                   <span className="mx-0.5 h-5 w-px bg-gray-200" />
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertUnorderedList")} className={fsToolbarBtnMobile} title="Bullet list"><List size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertOrderedList")} className={fsToolbarBtnMobile} title="Numbered list"><ListOrdered size={16} /></button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertUnorderedList")} className={fsToolbarBtnMobile} title="Bullet list"><List size={16} /></button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertOrderedList")} className={fsToolbarBtnMobile} title="Numbered list"><ListOrdered size={16} /></button>
                   <span className="mx-0.5 h-5 w-px bg-gray-200" />
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("undo")} className={fsToolbarBtnMobile} title="Undo"><Undo2 size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("redo")} className={fsToolbarBtnMobile} title="Redo"><Redo2 size={16} /></button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("undo")} className={fsToolbarBtnMobile} title="Undo"><Undo2 size={16} /></button>
+                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("redo")} className={fsToolbarBtnMobile} title="Redo"><Redo2 size={16} /></button>
                 </div>
                 <div className="flex items-center gap-0.5">
                   {hasApiKey && <button onClick={() => setAiOpen(true)} className={`${fsToolbarBtnMobile} text-violet-500`} title="AI"><Sparkles size={16} /></button>}
@@ -618,73 +614,34 @@ export function NotesView() {
     // ---- Normal editor (inside NotesShell) ----
     return (
       <NotesShell title="Notes" subtitle="Project notes">
-        <style>{`
-          .note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }
-        `}</style>
-
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* shared container for toolbar + paper */}
-          <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col overflow-hidden">
-          {/* ===== MINIMAL TOOLBAR ===== */}
-          <div className="flex shrink-0 flex-wrap items-center justify-center gap-1 border-b border-(--crm-border) bg-white px-1 py-1.5 sm:px-0 sm:gap-1.5">
-            {/* Back */}
-            <button onClick={handleBack} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Save & back"><ArrowLeft size={15} /></button>
-            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
-            {/* Text formatting */}
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("bold")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Bold"><Bold size={15} /></button>
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("italic")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Italic"><Italic size={15} /></button>
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("underline")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Underline"><Underline size={15} /></button>
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("strikeThrough")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Strikethrough"><Strikethrough size={15} /></button>
-            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
-            {/* Lists */}
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertUnorderedList")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Bullet list"><List size={15} /></button>
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("insertOrderedList")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Numbered list"><ListOrdered size={15} /></button>
-            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
-            {/* History */}
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("undo")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Undo"><Undo2 size={15} /></button>
-            <button onMouseDown={(e) => e.preventDefault()} onClick={() => exec("redo")} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Redo"><Redo2 size={15} /></button>
-            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
-            {/* AI */}
-            {hasApiKey ? (
-              <button onClick={() => setAiOpen(true)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-violet-600" title="AI Assistant"><Sparkles size={15} /></button>
-            ) : (
-              <a href="/app/settings" className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint) transition-colors hover:bg-(--crm-soft)" title="Add API key in Settings"><Lock size={15} /></a>
-            )}
-            {hasApiKey ? (
-              <button onClick={() => void runSmart()} disabled={smartBusy} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-violet-600 disabled:opacity-40" title="Smart">
-                {smartBusy ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
-              </button>
-            ) : (
-              <span className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint)"><Lock size={15} /></span>
-            )}
-            <div className="mx-1 h-4 w-px bg-(--crm-border)" />
-            {/* Actions */}
-            <button onClick={handleNewNote} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="New note"><Plus size={15} /></button>
-            {editor.id && !isGuest && (
-              <button onClick={handleShare} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Share"><Link2 size={15} /></button>
-            )}
-            <div className="relative">
-              <button onClick={() => setSaveMenuOpen(!saveMenuOpen)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Export"><FileDown size={15} /></button>
-              {saveMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-[55]" onClick={() => setSaveMenuOpen(false)} />
-                  <div className="absolute right-0 top-full z-[56] mt-1 w-40 rounded-lg border border-(--crm-border) bg-white py-1 shadow-lg">
-                    <button onClick={downloadWord} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileText size={13} />Word</button>
-                    <button onClick={downloadPdf} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileImage size={13} />PDF</button>
-                    <button onClick={downloadTxt} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileDown size={13} />Text</button>
-                  </div>
-                </>
-              )}
-            </div>
-            {editor.id && (
-              <button onClick={() => setConfirmDelete({ id: editor.id!, title: editor.title })} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint) transition-colors hover:bg-red-50 hover:text-red-500" title="Delete"><Trash2 size={15} /></button>
-            )}
-            <button onClick={() => setFullscreen(true)} className="flex items-center justify-center rounded-md p-1.5 text-(--crm-faint) transition-colors hover:bg-(--crm-soft) hover:text-(--crm-fg)" title="Fullscreen"><Maximize2 size={15} /></button>
-          </div>
-
-          {/* ===== PAPER (A4 portrait) ===== */}
-          <div className="flex-1 overflow-y-auto bg-gray-100 p-0 sm:p-5">
-              <div className="flex min-h-full flex-col bg-white p-4 shadow-sm sm:aspect-[210/297] sm:min-h-0 sm:p-8">
+        <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
+        <div className="flex flex-1 flex-col overflow-hidden bg-gray-100">
+          <EditorToolbar
+            title={editor.title}
+            html={editor.content}
+            hasApiKey={hasApiKey}
+            isGuest={isGuest}
+            hasActiveNote={!!editor.id}
+            smartBusy={smartBusy}
+            wordStats={wordStats}
+            contentRef={contentRef}
+            onContentChange={(html) => updateDraft({ content: html })}
+            onUploadHtml={handleUploadHtml}
+            onBack={handleBack}
+            onNewNote={handleNewNote}
+            onShare={handleShare}
+            onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+            onFullscreen={() => setFullscreen(true)}
+            onAiOpen={() => setAiOpen(true)}
+            onRunSmart={() => void runSmart()}
+            onDownloadTxt={downloadTxt}
+            onDownloadPdf={() => void downloadPdf()}
+            onDownloadWord={() => void downloadWord()}
+            announce={announce}
+          />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-0 sm:p-5">
+              <div className="mx-auto flex min-h-full w-full max-w-[900px] flex-col bg-white p-4 shadow-sm sm:rounded-xl sm:border sm:border-(--crm-border) sm:p-8">
                 <input
                   value={editor.title}
                   onChange={(event) => updateDraft({ title: event.target.value })}
@@ -737,6 +694,7 @@ export function NotesView() {
               )}
             </div>
           </div>
+          <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
         </div>
 
         {confirmModal}
