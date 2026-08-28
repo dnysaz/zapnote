@@ -639,13 +639,8 @@ export function NotesView() {
             announce={announce}
           />
           <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#e9eaed] p-6 md:block">
-            <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * (PAGE_H + GAP) - GAP}px` }}>
-              {Array.from({ length: pageCount }).map((_, i) => (
-                <div key={i} className="absolute inset-x-0 bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ top: i * (PAGE_H + GAP), height: PAGE_H }}>
-                  <div className="absolute inset-0 border border-gray-100 pointer-events-none" style={{ margin: '72px 64px', borderStyle: 'dashed', borderColor: 'rgba(0,0,0,0.08)' }} />
-                  <span className="absolute bottom-3 right-8 select-none text-[0.6rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
-                </div>
-              ))}
+            <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+              <div className="pointer-events-none absolute inset-0" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
               <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)` } as React.CSSProperties}>
                 <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => { updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML }); setTimeout(enforcePagination, 0); }} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
               </div>
@@ -742,14 +737,9 @@ export function NotesView() {
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
-              <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * (PAGE_H + GAP) - GAP}px` }}>
-                {Array.from({ length: pageCount }).map((_, i) => (
-                  <div key={i} className="absolute inset-x-0 bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ top: i * (PAGE_H + GAP), height: PAGE_H }}>
-                    <div className="absolute inset-0 pointer-events-none" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
-                    <span className="absolute bottom-3 right-8 select-none text-[0.6rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
-                  </div>
-                ))}
-                <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)` } as React.CSSProperties}>
+              <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+              <div className="pointer-events-none absolute inset-0" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
+              <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)` } as React.CSSProperties}>
                 <div
                   ref={contentRef}
                   contentEditable
