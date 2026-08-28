@@ -110,10 +110,47 @@ export function NotesView() {
 
   function enforcePagination() {
     const node = contentRef.current;
-    if (!node) return;
+    const paperEl = paperRef.current;
+    if (!node || !paperEl) return;
     const h = node.scrollHeight;
     const needed = Math.max(1, Math.ceil((h + 40) / PAGE_CONTENT_H));
     if (needed !== pageCount) setPageCount(Math.min(20, needed));
+    const sel = window.getSelection();
+    const anchor = sel?.anchorNode as HTMLElement | null;
+    const caretChild = anchor ? (anchor.nodeType === 1 ? anchor as HTMLElement : anchor.parentElement) : null;
+    const caretDiv = caretChild ? (caretChild.closest("div") as HTMLElement | null) : null;
+    const last = (caretDiv && node.contains(caretDiv) ? caretDiv : node.lastElementChild) as HTMLElement | null;
+    if (!last || (last as HTMLElement).dataset.pageBreak === "1") return;
+    const baseRect = paperEl.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    const absTop = lastRect.top - baseRect.top;
+    const stride = PAGE_H + GAP;
+    const pageIdx = Math.floor(absTop / stride);
+    const pageTop = pageIdx * stride;
+    const pageContentEnd = pageTop + PAGE_H - PAGE_PAD;
+    const bottom = absTop + last.offsetHeight;
+    if (absTop >= pageContentEnd - 2 || bottom > pageContentEnd) {
+      const exp = (pageIdx + 1) * stride + PAGE_PAD;
+      const spacerH = exp - absTop;
+      if (spacerH <= 0 || spacerH > PAGE_H) return;
+      const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+      const spacer = document.createElement("div");
+      spacer.dataset.pageBreak = "1";
+      spacer.contentEditable = "false";
+      spacer.style.height = `${spacerH}px`;
+      spacer.style.pointerEvents = "none";
+      node.insertBefore(spacer, last);
+      if (range && sel) { try { sel.removeAllRanges(); sel.addRange(range); } catch {} }
+      requestAnimationFrame(() => {
+        last.scrollIntoView({ block: "nearest" });
+        const scroller = node.closest(".overflow-y-auto") as HTMLElement | null;
+        if (scroller) scroller.scrollTop = last.offsetTop - 20;
+      });
+      setTimeout(() => {
+        const nh = node.scrollHeight;
+        setPageCount(Math.min(20, Math.max(1, Math.ceil((nh + 40) / PAGE_CONTENT_H))));
+      }, 10);
+    }
   }
 
   const draftKey = isGuest ? GUEST_DRAFT_KEY : DRAFT_KEY;
