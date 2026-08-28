@@ -544,10 +544,11 @@ export function NotesView() {
             announce={announce}
           />
           <div className="hidden flex-1 overflow-y-auto bg-[#f0f1f3] p-6 md:block">
-            <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123 + (pageCount - 1) * 24}px` }}>
+            <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123}px` }}>
               {Array.from({ length: pageCount }).map((_, i) => (
-                <div key={i} className="absolute inset-x-0 bg-white shadow-[0_2px_8px_rgba(0,0,0,.08)] border border-gray-200" style={{ top: i * (1123 + 24), height: 1123 }}>
+                <div key={i} className="absolute inset-x-0 bg-white border border-gray-200 shadow-[0_1px_4px_rgba(0,0,0,.06)]" style={{ top: i * 1123, height: 1123 }}>
                   <span className="absolute bottom-2 right-6 select-none text-[0.55rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
+                  {i < pageCount - 1 && <div className="absolute inset-x-0 bottom-0 h-px bg-gray-200" />}
                 </div>
               ))}
               <div className="relative px-14 py-12">
@@ -643,10 +644,11 @@ export function NotesView() {
           />
           <div className="flex flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-0 sm:p-6">
-              <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123 + (pageCount - 1) * 24}px` }}>
+              <div className="relative mx-auto w-full max-w-[794px]" style={{ minHeight: `${pageCount * 1123}px` }}>
                 {Array.from({ length: pageCount }).map((_, i) => (
-                  <div key={i} className="absolute inset-x-0 bg-white shadow-[0_1px_6px_rgba(0,0,0,.08)] border border-gray-200" style={{ top: i * (1123 + 24), height: 1123, borderRadius: 1 }}>
+                  <div key={i} className="absolute inset-x-0 bg-white border border-gray-200 shadow-[0_1px_6px_rgba(0,0,0,.06)]" style={{ top: i * 1123, height: 1123 }}>
                     <span className="absolute bottom-2 right-6 select-none text-[0.55rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
+                    {i < pageCount - 1 && <div className="absolute inset-x-0 bottom-0 h-px bg-gray-200" />}
                   </div>
                 ))}
                 <div className="relative px-6 py-8 sm:px-14 sm:py-12">
