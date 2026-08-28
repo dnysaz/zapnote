@@ -603,7 +603,7 @@ export function NotesView() {
                   <span className="absolute bottom-3 right-8 select-none text-[0.6rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
                 </div>
               ))}
-              <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)` } as React.CSSProperties}>
+              <div ref={paperRef} className="relative px-[64px] py-[72px]">
                 <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => { updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML }); setTimeout(enforcePagination, 0); }} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
               </div>
             </div>
@@ -706,7 +706,7 @@ export function NotesView() {
                     <span className="absolute bottom-3 right-8 select-none text-[0.6rem] font-medium tracking-widest text-gray-300">— {i + 1} —</span>
                   </div>
                 ))}
-                <div ref={paperRef} className="relative px-[64px] py-[72px]" style={{ WebkitMaskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)`, maskImage: `repeating-linear-gradient(to bottom, transparent 0 ${PAGE_PAD}px, black ${PAGE_PAD}px ${PAGE_H - PAGE_PAD}px, transparent ${PAGE_H - PAGE_PAD}px ${PAGE_H + GAP}px)` } as React.CSSProperties}>
+                <div ref={paperRef} className="relative px-[64px] py-[72px]">
                 <div
                   ref={contentRef}
                   contentEditable
