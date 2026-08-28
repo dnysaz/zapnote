@@ -130,6 +130,49 @@ export function NotesView() {
     const pageContentEnd = pageTop + PAGE_H - PAGE_PAD;
     const bottom = absTop + last.offsetHeight;
     if (absTop >= pageContentEnd - 2 || bottom > pageContentEnd) {
+      const remaining = pageContentEnd - absTop;
+      if (last.offsetHeight > remaining + 20 && last.textContent && last.textContent.length > 20) {
+        const text = last.textContent || "";
+        const style = getComputedStyle(last);
+        const measurer = document.createElement("div");
+        measurer.style.position = "absolute";
+        measurer.style.visibility = "hidden";
+        measurer.style.width = last.offsetWidth + "px";
+        measurer.style.font = style.font;
+        measurer.style.lineHeight = style.lineHeight;
+        measurer.style.whiteSpace = "pre-wrap";
+        measurer.style.wordBreak = "break-word";
+        document.body.appendChild(measurer);
+        let low = 0, high = text.length, best = 0;
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          measurer.textContent = text.slice(0, mid);
+          if (measurer.offsetHeight <= remaining) { best = mid; low = mid + 1; } else high = mid - 1;
+        }
+        document.body.removeChild(measurer);
+        if (best > 0 && best < text.length) {
+          const first = text.slice(0, best);
+          const second = text.slice(best);
+          last.textContent = first;
+          const newDiv = document.createElement("div");
+          newDiv.textContent = second;
+          const spacer = document.createElement("div");
+          spacer.dataset.pageBreak = "1";
+          spacer.contentEditable = "false";
+          spacer.style.height = `${PAGE_H - remaining + PAGE_PAD}px`;
+          spacer.style.pointerEvents = "none";
+          node.insertBefore(spacer, last.nextSibling);
+          node.insertBefore(newDiv, spacer.nextSibling);
+          const cleanHtml = node.innerHTML.replace(/<div[^>]*data-page-break[^>]*>.*?<\/div>/g, "");
+          updateDraft({ content: cleanHtml });
+          requestAnimationFrame(() => newDiv.scrollIntoView({ block: "nearest" }));
+          setTimeout(() => {
+            const nh = node.scrollHeight;
+            setPageCount(Math.min(20, Math.max(1, Math.ceil((nh + 40) / PAGE_CONTENT_H))));
+          }, 10);
+          return;
+        }
+      }
       const exp = (pageIdx + 1) * stride + PAGE_PAD;
       const spacerH = exp - absTop;
       if (spacerH <= 0 || spacerH > PAGE_H) return;
