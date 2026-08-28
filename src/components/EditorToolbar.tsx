@@ -192,10 +192,10 @@ export function EditorToolbar(props: EditorToolbarProps) {
                     <span className="flex items-center gap-2.5"><FileDown size={14} /> Download as</span> <ChevronDown size={12} className={exportMenu ? "rotate-180" : ""} />
                   </button>
                   {exportMenu && (
-                    <div className="mx-2 mb-1 rounded-lg border border-(--crm-border-soft) bg-(--crm-soft) py-1">
-                      <button onClick={() => { setExportMenu(false); setFileMenu(false); props.onDownloadWord(); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-white"><FileText size={13} /> Microsoft Word (.docx)</button>
-                      <button onClick={() => { setExportMenu(false); setFileMenu(false); props.onDownloadPdf(); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-white"><FileImage size={13} /> PDF (.pdf)</button>
-                      <button onClick={() => { setExportMenu(false); setFileMenu(false); props.onDownloadTxt(); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-white"><FileDown size={13} /> Plain text (.txt)</button>
+                    <div className="mx-2 mb-1 rounded-lg border border-(--crm-border) bg-white py-1 shadow-sm">
+                      <button onClick={() => { setExportMenu(false); setFileMenu(false); props.onDownloadWord(); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileText size={13} /> Microsoft Word (.docx)</button>
+                      <button onClick={() => { setExportMenu(false); setFileMenu(false); props.onDownloadPdf(); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileImage size={13} /> PDF (.pdf)</button>
+                      <button onClick={() => { setExportMenu(false); setFileMenu(false); props.onDownloadTxt(); }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-(--crm-fg) hover:bg-(--crm-soft)"><FileDown size={13} /> Plain text (.txt)</button>
                     </div>
                   )}
                 </div>
