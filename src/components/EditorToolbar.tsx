@@ -153,17 +153,36 @@ export function EditorToolbar(props: EditorToolbarProps) {
         props.announce(`Loaded ${file.name}`);
       } else if (ext === "json") {
         const text = await file.text();
-        const parsed = JSON.parse(text) as unknown;
-        let note: { title?: unknown; content?: unknown } | null = null;
-        if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object") note = parsed[0] as { title?: unknown; content?: unknown };
-        else if (parsed && typeof parsed === "object" && "notes" in parsed && Array.isArray((parsed as { notes?: unknown[] }).notes) && ((parsed as { notes?: unknown[] }).notes as unknown[])[0]) note = ((parsed as { notes?: unknown[] }).notes as { title?: unknown; content?: unknown }[])[0];
-        else if (parsed && typeof parsed === "object") note = parsed as { title?: unknown; content?: unknown };
-        if (note && typeof note.content === "string") {
-          const content = note.content;
+        const parsed: unknown = JSON.parse(text);
+        const findStr = (obj: unknown, keys: string[]): string | null => {
+          if (!obj || typeof obj !== "object") return null;
+          const rec = obj as Record<string, unknown>;
+          for (const k of keys) {
+            if (typeof rec[k] === "string" && (rec[k] as string).trim()) return rec[k] as string;
+          }
+          for (const v of Object.values(rec)) {
+            if (v && typeof v === "object") {
+              const r = findStr(v, keys);
+              if (r) return r;
+            }
+          }
+          return null;
+        };
+        let src: unknown = null;
+        if (Array.isArray(parsed)) src = parsed.find((x) => x && typeof x === "object") ?? null;
+        else if (parsed && typeof parsed === "object") {
+          const rec = parsed as Record<string, unknown>;
+          if ("notes" in rec && Array.isArray(rec.notes) && (rec.notes as unknown[])[0]) src = (rec.notes as unknown[])[0];
+          else if ("data" in rec && rec.data && typeof rec.data === "object") src = rec.data;
+          else src = parsed;
+        }
+        const content = src ? findStr(src, ["content", "body", "text", "html", "note", "description", "detail"]) : null;
+        const title = src ? findStr(src, ["title", "name", "subject", "heading"]) : null;
+        if (content) {
           const html = /<\/?[a-z][\s\S]*>/i.test(content)
             ? content
             : content.split(/\r?\n/).map((l) => `<div>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") || "<br>"}</div>`).join("");
-          props.onUploadHtml(html, typeof note.title === "string" ? note.title : file.name.replace(/\.json$/i, ""));
+          props.onUploadHtml(html, title || file.name.replace(/\.json$/i, ""));
           props.announce(`Loaded ${file.name}`);
         } else {
           props.announce("JSON has no note content");
