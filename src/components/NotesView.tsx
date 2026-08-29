@@ -742,23 +742,23 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     // ---- Normal editor (inside NotesShell) ----
     return (
       <NotesShell
-        title={isCodeMode ? "Code" : "Notes"}
-        subtitle={isCodeMode ? "Code editor" : "Project notes"}
+        bare={isCodeMode}
+        title={isCodeMode ? "" : "Notes"}
+        subtitle={isCodeMode ? "" : "Project notes"}
         headerExtra={
-          <input
-            value={editor.title}
-            onChange={(e) => updateDraft({ title: e.target.value })}
-            placeholder="Untitled document"
-            maxLength={80}
-            className="w-full max-w-[280px] border-0 border-b border-gray-300 bg-transparent px-1 py-1.5 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none"
-
-          />
+          isCodeMode ? undefined : (
+            <input
+              value={editor.title}
+              onChange={(e) => updateDraft({ title: e.target.value })}
+              placeholder="Untitled document"
+              maxLength={80}
+              className="w-full max-w-[280px] border-0 border-b border-gray-300 bg-transparent px-1 py-1.5 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none"
+            />
+          )
         }
       >
-        <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
-          {isCodeMode ? (
-            <CodeWorkspace
+        {isCodeMode ? (
+          <CodeWorkspace
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
               onChange={updateActiveCodeContent}
@@ -775,6 +775,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
             />
           ) : (
             <>
+              <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
               <EditorToolbar
                 title={editor.title}
                 html={editor.content}
@@ -851,7 +852,6 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
             </>
           )}
-        </div>
 
         {confirmModal}
         {shareNote && (
