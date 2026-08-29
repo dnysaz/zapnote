@@ -84,6 +84,38 @@ function snippet(note: Note): string {
   return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }
 
+const CODE_EXT_COLORS: Record<string, { bg: string; fg: string }> = {
+  php: { bg: "#777BB3", fg: "#ffffff" },
+  ts: { bg: "#3178C6", fg: "#ffffff" },
+  tsx: { bg: "#3178C6", fg: "#ffffff" },
+  js: { bg: "#F0DB4F", fg: "#323330" },
+  jsx: { bg: "#F0DB4F", fg: "#323330" },
+  py: { bg: "#3776AB", fg: "#ffffff" },
+  html: { bg: "#E34F26", fg: "#ffffff" },
+  htm: { bg: "#E34F26", fg: "#ffffff" },
+  css: { bg: "#1572B6", fg: "#ffffff" },
+  json: { bg: "#F2C200", fg: "#323330" },
+  xml: { bg: "#8A9B0F", fg: "#ffffff" },
+  java: { bg: "#E76F00", fg: "#ffffff" },
+  go: { bg: "#00ADD8", fg: "#0b2b30" },
+  rb: { bg: "#CC342D", fg: "#ffffff" },
+  c: { bg: "#00599C", fg: "#ffffff" },
+  cpp: { bg: "#00599C", fg: "#ffffff" },
+  h: { bg: "#00599C", fg: "#ffffff" },
+  sh: { bg: "#4EAA25", fg: "#ffffff" },
+  md: { bg: "#5B5B5B", fg: "#ffffff" },
+};
+
+function codeCardMeta(note: Note): { label: string; bg: string; fg: string; name: string } {
+  const files = parseCodeFiles(note.content) ?? [];
+  const name = (files[0]?.name || note.title || "").trim();
+  const dot = name.lastIndexOf(".");
+  const ext = dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
+  const label = ext ? `.${ext}` : name ? name.toUpperCase() : "FILE";
+  const color = CODE_EXT_COLORS[ext] ?? { bg: "#3C3C3C", fg: "#ffffff" };
+  return { label, bg: color.bg, fg: color.fg, name: name || "untitled" };
+}
+
 export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const { session } = useAuth();
   const { settings } = useSettings();
@@ -283,7 +315,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
 
   function openNew() {
     if (isCodeMode) {
-      setNewCodeName("untitled.txt");
+      setNewCodeName("");
       setNewCodeMode("note");
       setNewCodeOpen(true);
       return;
@@ -292,20 +324,30 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   }
 
   function createCodeFile() {
-    const name = newCodeName.trim() || "untitled.txt";
+    const name = newCodeName.trim() || "untitled";
     const ext = name.includes(".") ? name.split(".").pop()! : "";
     const language = codeLangForExt(ext);
     if (newCodeMode === "file") {
-      setEditor((prev) => {
-        if (!prev) return prev;
+      const prev = editor;
+      if (prev) {
         const files = prev.codeFiles ?? parseCodeFiles(prev.content) ?? [];
         const next = [...files, { name, language, content: "" }];
-        return { ...prev, codeFiles: next, activeFile: next.length - 1, content: serializeCodeFiles(next) };
-      });
-      markSaved();
+        const content = serializeCodeFiles(next);
+        setEditor({ ...prev, codeFiles: next, activeFile: next.length - 1, content });
+        if (prev.id) {
+          const existing = notes.find((n) => n.id === prev.id);
+          if (existing) {
+            updateNote({ ...existing, title: prev.title, content, kind: "code", language: prev.language, updatedAt: new Date().toISOString() });
+          }
+        }
+      }
     } else {
+      const now = new Date().toISOString();
+      const id = uid();
       const seed: CodeFile[] = [{ name, language, content: "" }];
-      setEditor({ id: null, title: name, content: serializeCodeFiles(seed), kind: "code", language, codeFiles: seed, activeFile: 0 });
+      const content = serializeCodeFiles(seed);
+      addNote({ id, title: name, content, kind: "code", language, createdAt: now, updatedAt: now });
+      setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
     }
     setNewCodeOpen(false);
   }
@@ -637,7 +679,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
-              onAddFile={() => { setNewCodeName("untitled.txt"); setNewCodeMode("file"); setNewCodeOpen(true); }}
+              onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
               onBack={() => setEditor(null)}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
@@ -721,7 +763,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
-              onAddFile={() => { setNewCodeName("untitled.txt"); setNewCodeMode("file"); setNewCodeOpen(true); }}
+              onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
               onBack={() => setEditor(null)}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
@@ -863,30 +905,48 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
         </div>
       ) : (
         <div className="crm-rise mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-4">
-          {visibleNotes.map((note) => (
-            <div key={note.id} onClick={() => openNote(note)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openNote(note); } }} className="group relative flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)] sm:aspect-[4/5] sm:p-4">
-              <div className="flex items-start justify-between gap-2">
-                <p className="line-clamp-2 min-w-0 flex-1 text-[0.9375rem] font-semibold leading-5 text-(--crm-fg)">{note.title || "Untitled note"}</p>
-                <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete note"><Trash2 size={14} /></button>
+            {visibleNotes.map((note) => {
+              const meta = isCodeMode ? codeCardMeta(note) : null;
+              return (
+              <div key={note.id} onClick={() => openNote(note)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openNote(note); } }} className="group relative flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)] sm:aspect-[4/5] sm:p-4">
+                {meta ? (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-2 min-w-0 flex-1 text-[0.8rem] font-semibold leading-5 text-(--crm-fg)">{note.title || "untitled"}</p>
+                      <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete file"><Trash2 size={14} /></button>
+                    </div>
+                    <div className="flex flex-1 items-center justify-center">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-xl text-xl font-black" style={{ background: meta.bg, color: meta.fg }}>{meta.label}</div>
+                    </div>
+                    <p className="border-t border-(--crm-border-soft) pt-2.5 text-[0.7rem] font-medium text-(--crm-muted)">{(parseCodeFiles(note.content)?.[0]?.language || "code").toUpperCase()}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-2 min-w-0 flex-1 text-[0.9375rem] font-semibold leading-5 text-(--crm-fg)">{note.title || "Untitled note"}</p>
+                      <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete note"><Trash2 size={14} /></button>
+                    </div>
+                    <div className="my-3 h-px bg-(--crm-border-soft)" />
+                    {(note.tags?.length ?? 0) > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {note.tags!.slice(0, 3).map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={(event) => { event.stopPropagation(); setActiveTag(activeTag === tag ? null : tag); }}
+                            className={`rounded-full px-2 py-0.5 text-[0.625rem] font-semibold transition-colors ${activeTag === tag ? "bg-violet-600 text-white" : "bg-violet-50 text-violet-700 hover:bg-violet-100"}`}
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <p className="line-clamp-4 flex-1 text-[0.8125rem] leading-5 text-(--crm-secondary)">{snippet(note) || "No content yet."}</p>
+                    <p className="mt-3 border-t border-(--crm-border-soft) pt-2.5 text-[0.625rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">Updated {formatDate(note.updatedAt)}</p>
+                  </>
+                )}
               </div>
-              <div className="my-3 h-px bg-(--crm-border-soft)" />
-              {(note.tags?.length ?? 0) > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">
-                  {note.tags!.slice(0, 3).map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={(event) => { event.stopPropagation(); setActiveTag(activeTag === tag ? null : tag); }}
-                      className={`rounded-full px-2 py-0.5 text-[0.625rem] font-semibold transition-colors ${activeTag === tag ? "bg-violet-600 text-white" : "bg-violet-50 text-violet-700 hover:bg-violet-100"}`}
-                    >
-                      #{tag}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="line-clamp-4 flex-1 text-[0.8125rem] leading-5 text-(--crm-secondary)">{snippet(note) || "No content yet."}</p>
-              <p className="mt-3 border-t border-(--crm-border-soft) pt-2.5 text-[0.625rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">Updated {formatDate(note.updatedAt)}</p>
-            </div>
-          ))}
+              );
+            })}
         </div>
       )}
 
