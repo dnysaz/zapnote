@@ -148,12 +148,14 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
 
   // Resume a non-empty draft after refresh / navigation.
   useEffect(() => {
+    // Code mode always starts at the file list — never auto-open the editor from a draft.
+    if (isCodeMode) return;
     const draft = readDraft(draftKey);
     if (draft && (draft.title || draft.content)) {
       // One-time sync of persisted draft from localStorage (external system) into React state.
       setEditor(draft);
     }
-  }, [draftKey]);
+  }, [draftKey, isCodeMode]);
 
   // Auto-save draft to localStorage on every keystroke.
   useEffect(() => {
@@ -680,7 +682,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
-              onBack={() => setEditor(null)}
+              onBack={() => { setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
@@ -764,7 +766,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
-              onBack={() => setEditor(null)}
+              onBack={() => { setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
