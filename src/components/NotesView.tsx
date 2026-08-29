@@ -2,19 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Minimize2,
   Plus,
   Search,
-  Sparkles,
   StickyNote,
   Trash2,
-  Underline,
-  Undo2,
-  Redo2,
   Wand2,
   X,
 } from "lucide-react";
@@ -197,13 +188,6 @@ export function NotesView() {
   function updateDraft(patch: Partial<Pick<NoteDraft, "title" | "content">>) {
     setEditor((prev) => (prev ? { ...prev, ...patch } : prev));
     markSaved();
-  }
-
-  function execCmd(command: string, value?: string) {
-    contentRef.current?.focus();
-    try { document.execCommand(command, false, value); } catch {}
-    const node = contentRef.current;
-    if (node && node.innerHTML !== editor?.content) updateDraft({ content: node.innerHTML });
   }
 
   const wordStats = useMemo(() => {
@@ -506,7 +490,6 @@ export function NotesView() {
   if (editor) {
     // ---- Fullscreen mode ----
     if (fullscreen) {
-      const fsToolbarBtnMobile = "flex items-center justify-center rounded-lg p-2 text-gray-400 transition-colors active:bg-gray-100 active:text-gray-700";
       return (
         <div className="fixed inset-0 z-[80] flex flex-col bg-white">
           <EditorToolbar
@@ -542,9 +525,9 @@ export function NotesView() {
             <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
           </div>
 
-          {/* Mobile: Full-screen editor with bottom toolbar */}
+          {/* Mobile: Full-screen editor — toolbar stays at top as one scrollable row */}
           <div className="flex flex-1 flex-col md:hidden">
-            <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 pt-12 pb-20">
+            <div className="flex flex-1 items-start justify-center overflow-y-auto px-3 pb-4 pt-3">
               <div className="flex w-full flex-col">
                 <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none" />
                 <div
@@ -556,24 +539,6 @@ export function NotesView() {
                   onInput={(event) => updateDraft({ content: (event.target as HTMLDivElement).innerHTML })}
                   className="note-editor min-h-[60vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-base [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
                 />
-              </div>
-            </div>
-            {/* Mobile bottom toolbar — horizontally scrollable to reveal all actions */}
-            <div className="fixed bottom-0 left-0 right-0 z-[85] border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] pt-2">
-              <div className="flex items-center gap-0.5 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("bold")} className={fsToolbarBtnMobile} title="Bold"><Bold size={16} /></button>
-                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("italic")} className={fsToolbarBtnMobile} title="Italic"><Italic size={16} /></button>
-                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("underline")} className={fsToolbarBtnMobile} title="Underline"><Underline size={16} /></button>
-                <span className="mx-0.5 h-5 w-px shrink-0 bg-gray-200" />
-                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertUnorderedList")} className={fsToolbarBtnMobile} title="Bullet list"><List size={16} /></button>
-                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertOrderedList")} className={fsToolbarBtnMobile} title="Numbered list"><ListOrdered size={16} /></button>
-                <span className="mx-0.5 h-5 w-px shrink-0 bg-gray-200" />
-                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("undo")} className={fsToolbarBtnMobile} title="Undo"><Undo2 size={16} /></button>
-                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("redo")} className={fsToolbarBtnMobile} title="Redo"><Redo2 size={16} /></button>
-                <span className="mx-0.5 h-5 w-px shrink-0 bg-gray-200" />
-                {hasApiKey && <button onClick={() => setAiOpen(true)} className={`${fsToolbarBtnMobile} text-violet-500`} title="AI"><Sparkles size={16} /></button>}
-                <button onClick={handleNewNote} className={fsToolbarBtnMobile} title="New"><Plus size={16} /></button>
-                <button onClick={() => setFullscreen(false)} className={fsToolbarBtnMobile} title="Exit"><Minimize2 size={16} /></button>
               </div>
             </div>
           </div>
