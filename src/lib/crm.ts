@@ -26,6 +26,8 @@ export type Note = {
   id: string;
   title: string;
   content: string;
+  kind?: "rich" | "code";
+  language?: string;
   tags?: string[];
   actionItems?: NoteActionItem[];
   createdAt: string;

@@ -31,11 +31,13 @@ export async function POST(request: Request) {
   const body = (await request.json()) as Note;
   const tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   const actionItems = JSON.stringify(Array.isArray(body.actionItems) ? body.actionItems : []);
+  const kind = body.kind === "code" ? "code" : "rich";
+  const language = typeof body.language === "string" && body.language ? body.language : null;
   try {
-    await sql`INSERT INTO notes (id, title, content, created_at, updated_at, tags, action_items) VALUES (${body.id}, ${body.title}, ${body.content}, ${body.createdAt}, ${body.updatedAt}, ${tags}::jsonb, ${actionItems}::jsonb)`;
+    await sql`INSERT INTO notes (id, title, content, created_at, updated_at, tags, action_items, kind, language) VALUES (${body.id}, ${body.title}, ${body.content}, ${body.createdAt}, ${body.updatedAt}, ${tags}::jsonb, ${actionItems}::jsonb, ${kind}, ${language})`;
   } catch {
     // Columns not migrated yet — save without them.
-    await sql`INSERT INTO notes (id, title, content, created_at, updated_at) VALUES (${body.id}, ${body.title}, ${body.content}, ${body.createdAt}, ${body.updatedAt})`;
+    await sql`INSERT INTO notes (id, title, content, created_at, updated_at, tags, action_items) VALUES (${body.id}, ${body.title}, ${body.content}, ${body.createdAt}, ${body.updatedAt}, ${tags}::jsonb, ${actionItems}::jsonb)`;
   }
   return NextResponse.json(body);
 }

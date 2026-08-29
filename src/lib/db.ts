@@ -21,6 +21,8 @@ export interface NoteRow {
   id: string;
   title: string;
   content: string;
+  kind?: string;
+  language?: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -45,6 +47,8 @@ export function rowToNote(row: NoteRow): Note {
     id: row.id,
     title: row.title,
     content: row.content,
+    kind: row.kind === "code" ? "code" : "rich",
+    language: row.language ?? undefined,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };

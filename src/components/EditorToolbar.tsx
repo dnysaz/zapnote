@@ -56,6 +56,9 @@ export type EditorToolbarProps = {
   onDownloadPdf: () => void;
   onDownloadWord: () => void;
   announce: (msg: string) => void;
+  isCode?: boolean;
+  language?: string;
+  onUploadCode?: (raw: string, language: string, title?: string) => void;
 };
 
 const FONTS = [
@@ -125,9 +128,14 @@ export function EditorToolbar(props: EditorToolbarProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
-    const textExts = ["txt", "md", "html", "htm", "css", "js", "jsx", "ts", "tsx", "py", "php", "xml", "svg", "csv", "log", "sh", "rb", "go", "java", "c", "cpp", "h"];
+    const codeMap: Record<string, string> = {
+      html: "html", htm: "html", css: "css", js: "javascript", jsx: "javascript",
+      ts: "typescript", tsx: "typescript", py: "python", php: "php", xml: "xml",
+      svg: "xml", csv: "plaintext", log: "plaintext", sh: "shell", rb: "ruby",
+      go: "go", java: "java", c: "c", cpp: "cpp", h: "c", json: "json",
+    };
     try {
-      if (textExts.includes(ext ?? "")) {
+      if (ext === "txt" || ext === "md") {
         const text = await file.text();
         const html = text
           .split(/\r?\n/)
@@ -147,44 +155,12 @@ export function EditorToolbar(props: EditorToolbarProps) {
           .join("");
         props.onUploadHtml(wrapped || html, file.name.replace(/\.docx$/i, ""));
         props.announce(`Imported ${file.name}`);
-      } else if (ext === "json") {
+      } else if (ext && ext in codeMap) {
         const text = await file.text();
-        const parsed: unknown = JSON.parse(text);
-        const findStr = (obj: unknown, keys: string[]): string | null => {
-          if (!obj || typeof obj !== "object") return null;
-          const rec = obj as Record<string, unknown>;
-          for (const k of keys) {
-            if (typeof rec[k] === "string" && (rec[k] as string).trim()) return rec[k] as string;
-          }
-          for (const v of Object.values(rec)) {
-            if (v && typeof v === "object") {
-              const r = findStr(v, keys);
-              if (r) return r;
-            }
-          }
-          return null;
-        };
-        let src: unknown = null;
-        if (Array.isArray(parsed)) src = parsed.find((x) => x && typeof x === "object") ?? null;
-        else if (parsed && typeof parsed === "object") {
-          const rec = parsed as Record<string, unknown>;
-          if ("notes" in rec && Array.isArray(rec.notes) && (rec.notes as unknown[])[0]) src = (rec.notes as unknown[])[0];
-          else if ("data" in rec && rec.data && typeof rec.data === "object") src = rec.data;
-          else src = parsed;
-        }
-        const content = src ? findStr(src, ["content", "body", "text", "html", "note", "description", "detail"]) : null;
-        const title = src ? findStr(src, ["title", "name", "subject", "heading"]) : null;
-        if (content) {
-          const html = /<\/?[a-z][\s\S]*>/i.test(content)
-            ? content
-            : content.split(/\r?\n/).map((l) => `<div>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") || "<br>"}</div>`).join("");
-          props.onUploadHtml(html, title || file.name.replace(/\.json$/i, ""));
-          props.announce(`Loaded ${file.name}`);
-        } else {
-          props.announce("JSON has no note content");
-        }
+        props.onUploadCode?.(text, codeMap[ext], file.name.replace(/\.[^.]+$/, ""));
+        props.announce(`Opened ${file.name}`);
       } else {
-        props.announce("Unsupported format — use .txt, .md, .docx, .html, .json");
+        props.announce("Unsupported format — use .txt, .md, .docx, .html, .css, .js, .ts, .py, .php, .xml, .json, …");
       }
     } catch {
       props.announce("Failed to open file");
@@ -242,6 +218,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
         </div>
         {/* Desktop-only line break so larger screens keep a two-row layout */}
         <span className="hidden w-px sm:block sm:h-5 sm:w-full" />
+        {!props.isCode && (<>
         <div className="flex shrink-0 items-center gap-1">
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "undo"); sync(); }} className={btn} title="Undo (Ctrl+Z)"><Undo2 size={15} /></button>
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "redo"); sync(); }} className={btn} title="Redo (Ctrl+Y)"><Redo2 size={15} /></button>
@@ -298,6 +275,10 @@ export function EditorToolbar(props: EditorToolbarProps) {
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "indent"); sync(); }} className={btn} title="Increase indent (Tab)"><Indent size={15} /></button>
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "outdent"); sync(); }} className={btn} title="Decrease indent"><Outdent size={15} /></button>
         </div>
+        </>)}
+        {props.isCode && (
+          <span className="shrink-0 rounded-full bg-violet-100 px-2.5 py-1 text-[0.62rem] font-semibold text-violet-700">{props.language ?? "code"}</span>
+        )}
         <div className={sep} />
         <div className="flex shrink-0 items-center gap-1">
           {props.hasApiKey ? (

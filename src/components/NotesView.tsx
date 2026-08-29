@@ -17,6 +17,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
 import { NoteAiPanel } from "@/components/NoteAiPanel";
 import { EditorToolbar, EditorStatusBar } from "@/components/EditorToolbar";
+import { CodeEditor } from "@/components/CodeEditor";
 import type { Note, NoteActionItem } from "@/lib/crm";
 import { formatDate, uid } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
@@ -29,6 +30,8 @@ type NoteDraft = {
   id: string | null;
   title: string;
   content: string;
+  kind?: "rich" | "code";
+  language?: string;
 };
 
 function readDraft(key: string): NoteDraft | null {
@@ -68,8 +71,8 @@ function toHtmlBlocks(html: string): string {
 }
 
 function snippet(note: Note): string {
-  const flat = toPlainText(note.content);
-  return flat.length > 160 ? `${flat.slice(0, 160)}…` : flat;
+  const text = note.kind === "code" ? note.content : toPlainText(note.content);
+  return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }
 
 export function NotesView() {
@@ -212,8 +215,20 @@ export function NotesView() {
     announce("Opened in new note");
   }
 
+  function handleUploadCode(raw: string, language: string, title?: string) {
+    const now = new Date().toISOString();
+    const newId = uid();
+    const finalTitle = title?.trim() || "Untitled note";
+    const newNote: Note = { id: newId, title: finalTitle, content: raw, kind: "code", language, createdAt: now, updatedAt: now };
+    addNote(newNote);
+    clearDraft(draftKey);
+    setEditor({ id: newId, title: finalTitle, content: raw, kind: "code", language });
+    markSaved();
+    announce("Opened in code editor");
+  }
+
   function openNote(note: Note) {
-    setEditor({ id: note.id, title: note.title, content: note.content });
+    setEditor({ id: note.id, title: note.title, content: note.content, kind: note.kind, language: note.language });
   }
 
   function openNew() {
@@ -510,6 +525,9 @@ export function NotesView() {
             contentRef={contentRef}
             onContentChange={(html) => updateDraft({ content: html })}
             onUploadHtml={handleUploadHtml}
+            onUploadCode={handleUploadCode}
+            isCode={editor.kind === "code"}
+            language={editor.language}
             onBack={() => setFullscreen(false)}
             onNewNote={handleNewNote}
             onShare={handleShare}
@@ -524,13 +542,22 @@ export function NotesView() {
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
             <div className="flex-1 overflow-y-auto p-0 sm:p-6">
-              <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-                <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
-                <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
+              {editor.kind === "code" ? (
+                <div className="mx-auto flex h-full w-full max-w-[1100px] flex-col p-0 sm:p-3">
                   <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
-                  <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
+                  <div className="min-h-0 flex-1">
+                    <CodeEditor value={editor.content} language={editor.language ?? "plaintext"} onChange={(v) => updateDraft({ content: v })} />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+                  <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+                  <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
+                    <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
+                    <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.target as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
+                  </div>
+                </div>
+                )}
             </div>
             <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
           </div>
@@ -571,6 +598,9 @@ export function NotesView() {
             contentRef={contentRef}
             onContentChange={(html) => updateDraft({ content: html })}
             onUploadHtml={handleUploadHtml}
+            onUploadCode={handleUploadCode}
+            isCode={editor.kind === "code"}
+            language={editor.language}
             onBack={handleBack}
             onNewNote={handleNewNote}
             onShare={handleShare}
@@ -585,55 +615,64 @@ export function NotesView() {
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
-              <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-              <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
-              <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
-                <div
-                  ref={contentRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  role="textbox"
-                  aria-multiline="true"
-                  data-ph="Start writing…"
-                  onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
-                  className="note-editor min-h-[40vh] flex-1 bg-transparent text-[0.9375rem] leading-7 text-(--crm-fg) outline-none sm:text-base sm:leading-8 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
-                />
-              </div>
-
-              {/* Action Items */}
-              {editingNote && actionItems.length > 0 && (
-                <div className="mt-4 rounded-xl border border-(--crm-border) bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="flex items-center gap-1.5 text-sm font-semibold text-(--crm-fg)"><Wand2 size={14} className="text-violet-500" />Action Items</h4>
-                    <span className="text-[0.69rem] font-medium text-(--crm-muted)">{actionItems.filter((item) => item.done).length}/{actionItems.length} done</span>
+              {editor.kind === "code" ? (
+                <div className="mx-auto flex h-full w-full max-w-[1100px] flex-col p-0 sm:p-3">
+                  <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
+                  <div className="min-h-0 flex-1">
+                    <CodeEditor value={editor.content} language={editor.language ?? "plaintext"} onChange={(v) => updateDraft({ content: v })} />
                   </div>
-                  <ul className="mt-3 space-y-1">
-                    {actionItems.map((item, index) => (
-                      <li key={`${item.text}-${index}`} className="group/item flex items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-(--crm-soft)">
-                        <input type="checkbox" checked={item.done} onChange={() => toggleActionItem(index)} className="h-3.5 w-3.5 shrink-0 accent-violet-600" aria-label={item.text} />
-                        <span className={`min-w-0 flex-1 truncate text-xs ${item.done ? "text-(--crm-faint) line-through" : "text-(--crm-fg)"}`}>{item.text}</span>
-                        <button onClick={() => removeActionItem(index)} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:text-red-500 group-hover/item:opacity-100" aria-label="Remove"><X size={12} /></button>
-                      </li>
-                    ))}
-                  </ul>
-                  <form
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const input = event.currentTarget.elements.namedItem("newItem") as HTMLInputElement;
-                      addActionItem(input.value);
-                      input.value = "";
-                    }}
-                    className="mt-2.5 flex gap-2"
-                  >
-                    <input name="newItem" placeholder="Add task…" className="h-8 flex-1 rounded-lg border border-(--crm-border-input) bg-(--crm-surface) px-3 text-xs outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-focus-border)" />
-                    <button type="submit" className="rounded-lg border border-(--crm-border) bg-(--crm-surface) px-2.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft)">Add</button>
-                  </form>
+                </div>
+              ) : (
+                <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+                  <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+                  <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
+                    <div
+                      ref={contentRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      role="textbox"
+                      aria-multiline="true"
+                      data-ph="Start writing…"
+                      onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
+                      className="note-editor min-h-[40vh] flex-1 bg-transparent text-[0.9375rem] leading-7 text-(--crm-fg) outline-none sm:text-base sm:leading-8 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
+                    />
+                  </div>
+
+                  {/* Action Items */}
+                  {editingNote && actionItems.length > 0 && (
+                    <div className="mt-4 rounded-xl border border-(--crm-border) bg-white p-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-(--crm-fg)"><Wand2 size={14} className="text-violet-500" />Action Items</h4>
+                        <span className="text-[0.69rem] font-medium text-(--crm-muted)">{actionItems.filter((item) => item.done).length}/{actionItems.length} done</span>
+                      </div>
+                      <ul className="mt-3 space-y-1">
+                        {actionItems.map((item, index) => (
+                          <li key={`${item.text}-${index}`} className="group/item flex items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-(--crm-soft)">
+                            <input type="checkbox" checked={item.done} onChange={() => toggleActionItem(index)} className="h-3.5 w-3.5 shrink-0 accent-violet-600" aria-label={item.text} />
+                            <span className={`min-w-0 flex-1 truncate text-xs ${item.done ? "text-(--crm-faint) line-through" : "text-(--crm-fg)"}`}>{item.text}</span>
+                            <button onClick={() => removeActionItem(index)} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:text-red-500 group-hover/item:opacity-100" aria-label="Remove"><X size={12} /></button>
+                          </li>
+                        ))}
+                      </ul>
+                      <form
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const input = event.currentTarget.elements.namedItem("newItem") as HTMLInputElement;
+                          addActionItem(input.value);
+                          input.value = "";
+                        }}
+                        className="mt-2.5 flex gap-2"
+                      >
+                        <input name="newItem" placeholder="Add task…" className="h-8 flex-1 rounded-lg border border-(--crm-border-input) bg-(--crm-surface) px-3 text-xs outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-focus-border)" />
+                        <button type="submit" className="rounded-lg border border-(--crm-border) bg-(--crm-surface) px-2.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft)">Add</button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
           <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
-        </div>
         </div>
 
         {confirmModal}
