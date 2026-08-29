@@ -567,7 +567,7 @@ export function NotesView() {
         }
       >
         <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#e9eaed]">
           <EditorToolbar
             title={editor.title}
             html={editor.content}
