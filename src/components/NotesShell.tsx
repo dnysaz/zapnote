@@ -168,7 +168,7 @@ export function NotesShell({ title, subtitle, children, headerExtra }: { title: 
             </div>
           </header>
 
-          <div className="w-full flex-1 px-3 py-4 sm:mx-auto sm:max-w-[1200px] sm:px-5 sm:py-7 sm:px-8">{children}</div>
+          <div className="flex min-h-0 w-full flex-1 flex-col px-3 py-4 sm:mx-auto sm:max-w-[1200px] sm:px-5 sm:py-7 sm:px-8">{children}</div>
         </main>
       </div>
     </div>
