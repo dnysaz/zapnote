@@ -6,13 +6,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useSettings } from "@/components/SettingsProvider";
-import { Bot, Download, Globe, Lock, LogOut, Menu, NotebookPen, PenLine, PenTool, Settings, Sparkles, X, Zap } from "lucide-react";
+import { Bot, Code2, Download, Globe, Lock, LogOut, Menu, NotebookPen, PenLine, PenTool, Settings, Sparkles, X, Zap } from "lucide-react";
 import { usePwaInstall } from "@/lib/usePwaInstall"
 
 const SIDEBAR_KEY = "zapnote:sidebar:minimized";
 
 const navItems = [
   { label: "Notes", href: "/app/notes", icon: NotebookPen },
+  { label: "Code", href: "/app/code", icon: Code2 },
   { label: "Articles", href: "/app/articles", icon: PenLine, authOnly: true, aiOnly: true },
   { label: "SWOT Analysis", href: "/app/swot", icon: Bot, authOnly: true, aiOnly: true },
   { label: "Creator", href: "/app/creator", icon: PenTool, authOnly: true, aiOnly: true },

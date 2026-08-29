@@ -82,11 +82,12 @@ function snippet(note: Note): string {
   return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }
 
-export function NotesView() {
+export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const { session } = useAuth();
   const { settings } = useSettings();
   const isGuest = session.status === "anonymous";
   const hasApiKey = settings.hasGeminiApiKey ?? false;
+  const isCodeMode = mode === "code";
   const { notes, addNote, updateNote, deleteNote } = useNotes();
   const [editor, setEditor] = useState<NoteDraft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -167,14 +168,12 @@ export function NotesView() {
   const query = search.trim();
   const visibleNotes = useMemo(() => {
     const byTag = (note: Note) => !activeTag || (note.tags ?? []).includes(activeTag);
-    if (query.length < 3) return sortedNotes.filter(byTag);
+    const byMode = (note: Note) => (isCodeMode ? note.kind === "code" : note.kind !== "code");
+    const base = sortedNotes.filter((n) => byMode(n) && byTag(n));
+    if (query.length < 3) return base;
     const q = query.toLowerCase();
-    return sortedNotes.filter(
-      (note) =>
-        byTag(note) &&
-        (note.title.toLowerCase().includes(q) || toPlainText(note.content).toLowerCase().includes(q)),
-    );
-  }, [sortedNotes, query, activeTag]);
+    return base.filter((note) => note.title.toLowerCase().includes(q));
+  }, [sortedNotes, query, activeTag, isCodeMode]);
 
   const email = session.status === "authed" ? session.email : "";
   const name = session.status === "authed" && (session as { name?: string }).name ? ((session as { name?: string }).name ?? "") : email;
@@ -219,44 +218,6 @@ export function NotesView() {
     if (contentRef.current) contentRef.current.innerHTML = html;
     markSaved();
     announce("Opened in new note");
-  }
-
-  function switchToCodeEditor() {
-    if (!editor) return;
-    const plain = toPlainText(editor.content);
-    const ext = editor.title.split(".").pop();
-    const language = codeLangForExt(ext);
-    const name = editor.title.trim() || "untitled.txt";
-    const files: CodeFile[] = [{ name, language, content: plain }];
-    const content = serializeCodeFiles(files);
-    setEditor({ ...editor, kind: "code", language, codeFiles: files, activeFile: 0, content });
-    if (editor.id) {
-      const existing = notes.find((n) => n.id === editor.id);
-      if (existing) {
-        updateNote({ ...existing, title: editor.title, content, kind: "code", language, updatedAt: new Date().toISOString() });
-      }
-    }
-    markSaved();
-    announce("Switched to code editor");
-  }
-
-  function switchToNoteEditor() {
-    if (!editor) return;
-    const files = editor.codeFiles ?? parseCodeFiles(editor.content) ?? [];
-    const text = files.length ? files[editor.activeFile ?? 0].content : editor.content;
-    const content = text
-      .split(/\r?\n/)
-      .map((l) => `<div>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") || "<br>"}</div>`)
-      .join("");
-    setEditor({ ...editor, kind: "rich", codeFiles: undefined, activeFile: undefined, content });
-    if (editor.id) {
-      const existing = notes.find((n) => n.id === editor.id);
-      if (existing) {
-        updateNote({ ...existing, title: editor.title, content, kind: "rich", language: undefined, updatedAt: new Date().toISOString() });
-      }
-    }
-    markSaved();
-    announce("Switched to note editor");
   }
 
   function addBlankCodeFile() {
@@ -332,7 +293,12 @@ export function NotesView() {
   }
 
   function openNew() {
-    setEditor({ id: null, title: "", content: "" });
+    if (isCodeMode) {
+      const seed: CodeFile[] = [{ name: "untitled.txt", language: "plaintext", content: "" }];
+      setEditor({ id: null, title: "untitled.txt", content: serializeCodeFiles(seed), kind: "code", language: "plaintext", codeFiles: seed, activeFile: 0 });
+      return;
+    }
+    setEditor({ id: null, title: "", content: "", kind: "rich" });
   }
 
   /** Save the current note (if non-empty) then open a blank note. */
@@ -354,7 +320,7 @@ export function NotesView() {
       }
       announce("Note saved");
     }
-    setEditor({ id: null, title: "", content: "" });
+    openNew();
   }
 
   function downloadTxt() {
@@ -614,7 +580,7 @@ export function NotesView() {
     if (fullscreen) {
       return (
         <div className="fixed inset-0 z-[80] flex flex-col bg-[#1e1e1e]">
-          {editor.kind === "code" ? (
+          {isCodeMode ? (
             <CodeWorkspace
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
@@ -623,7 +589,6 @@ export function NotesView() {
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={addBlankCodeFile}
-              onSwitchToNote={switchToNoteEditor}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
@@ -643,8 +608,6 @@ export function NotesView() {
                 contentRef={contentRef}
                 onContentChange={(html) => updateDraft({ content: html })}
                 onUploadHtml={handleUploadHtml}
-                onSwitchToCode={switchToCodeEditor}
-                onSwitchToNote={switchToNoteEditor}
                 isCode={false}
                 language={editor.language}
                 onBack={() => setFullscreen(false)}
@@ -684,8 +647,8 @@ export function NotesView() {
     // ---- Normal editor (inside NotesShell) ----
     return (
       <NotesShell
-        title="Notes"
-        subtitle="Project notes"
+        title={isCodeMode ? "Code" : "Notes"}
+        subtitle={isCodeMode ? "Code editor" : "Project notes"}
         headerExtra={
           <input
             value={editor.title}
@@ -699,7 +662,7 @@ export function NotesView() {
       >
         <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
-          {editor.kind === "code" ? (
+          {isCodeMode ? (
             <CodeWorkspace
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
@@ -708,7 +671,6 @@ export function NotesView() {
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={addBlankCodeFile}
-              onSwitchToNote={switchToNoteEditor}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
@@ -728,8 +690,6 @@ export function NotesView() {
                 contentRef={contentRef}
                 onContentChange={(html) => updateDraft({ content: html })}
                 onUploadHtml={handleUploadHtml}
-                onSwitchToCode={switchToCodeEditor}
-                onSwitchToNote={switchToNoteEditor}
                 isCode={false}
                 language={editor.language}
                 onBack={handleBack}
@@ -812,18 +772,18 @@ export function NotesView() {
 
   // ---------------- Grid view ----------------
   return (
-    <NotesShell title="Notes" subtitle="Project notes">
+    <NotesShell title={isCodeMode ? "Code" : "Notes"} subtitle={isCodeMode ? "Code editor" : "Project notes"}>
       <div className="crm-rise">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold tracking-[-.04em] sm:text-[1.625rem]">Project notes</h2>
-            <p className="mt-1 text-sm text-(--crm-secondary)">{query.length >= 3 ? `${visibleNotes.length} ${visibleNotes.length === 1 ? "match" : "matches"} for "${query}"` : `${sortedNotes.length} ${sortedNotes.length === 1 ? "note" : "notes"} to manage your projects.`}</p>
+            <h2 className="text-xl font-semibold tracking-[-.04em] sm:text-[1.625rem]">{isCodeMode ? "Code editor" : "Project notes"}</h2>
+            <p className="mt-1 text-sm text-(--crm-secondary)">{query.length >= 3 ? `${visibleNotes.length} ${visibleNotes.length === 1 ? "match" : "matches"} for "${query}"` : `${visibleNotes.length} ${visibleNotes.length === 1 ? (isCodeMode ? "file" : "note") : (isCodeMode ? "files" : "notes")} ${isCodeMode ? "in your workspace." : "to manage your projects."}`}</p>
           </div>
-          <button onClick={openNew} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"><Plus size={12} />New Note</button>
+          <button onClick={openNew} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"><Plus size={12} />{isCodeMode ? "New File" : "New Note"}</button>
         </div>
         <div className="relative mt-3">
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes…" className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:max-w-[240px]" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={isCodeMode ? "Search code…" : "Search notes…"} className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:max-w-[240px]" />
         </div>
       </div>
 
@@ -839,13 +799,13 @@ export function NotesView() {
       {sortedNotes.length === 0 ? (
         <div className="crm-rise mt-6 rounded-2xl border border-dashed border-(--crm-border) bg-(--crm-panel) px-6 py-24 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-(--crm-soft) text-(--crm-text)"><StickyNote size={28} /></div>
-          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">No notes yet</p>
-          <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-(--crm-muted)">This page is empty. Click <span className="font-semibold text-(--crm-brand)">New Note</span> in the top right to start writing your first project note.</p>
+          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">{isCodeMode ? "No code files yet" : "No notes yet"}</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-(--crm-muted)">{isCodeMode ? "This page is empty. Click New File in the top right to create your first code file." : "This page is empty. Click New Note in the top right to start writing your first project note."}</p>
         </div>
       ) : visibleNotes.length === 0 ? (
         <div className="crm-rise mt-6 rounded-2xl border border-dashed border-(--crm-border) bg-(--crm-panel) px-6 py-20 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-(--crm-soft) text-(--crm-text)"><Search size={24} /></div>
-          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">No notes found</p>
+          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">{isCodeMode ? "No code files found" : "No notes found"}</p>
           <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-(--crm-muted)">Nothing matches <span className="font-semibold text-(--crm-brand)">&ldquo;{query}&rdquo;</span>. Try different keywords.</p>
         </div>
       ) : (
