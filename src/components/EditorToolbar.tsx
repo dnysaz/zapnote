@@ -125,8 +125,9 @@ export function EditorToolbar(props: EditorToolbarProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
+    const textExts = ["txt", "md", "html", "htm", "css", "js", "jsx", "ts", "tsx", "py", "php", "xml", "svg", "csv", "log", "sh", "rb", "go", "java", "c", "cpp", "h"];
     try {
-      if (ext === "txt" || ext === "md") {
+      if (textExts.includes(ext ?? "")) {
         const text = await file.text();
         const html = text
           .split(/\r?\n/)
@@ -146,11 +147,6 @@ export function EditorToolbar(props: EditorToolbarProps) {
           .join("");
         props.onUploadHtml(wrapped || html, file.name.replace(/\.docx$/i, ""));
         props.announce(`Imported ${file.name}`);
-      } else if (ext === "html" || ext === "htm") {
-        const text = await file.text();
-        const doc = new DOMParser().parseFromString(text, "text/html");
-        props.onUploadHtml(doc.body.innerHTML, file.name.replace(/\.[^.]+$/, ""));
-        props.announce(`Loaded ${file.name}`);
       } else if (ext === "json") {
         const text = await file.text();
         const parsed: unknown = JSON.parse(text);
@@ -239,7 +235,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
               </div>
             </>
           )}
-          <input ref={fileInputRef} type="file" accept=".txt,.md,.docx,.html,.htm,.json" className="hidden" onChange={handleFileUpload} />
+          <input ref={fileInputRef} type="file" accept=".txt,.md,.html,.htm,.css,.js,.jsx,.ts,.tsx,.py,.php,.xml,.svg,.csv,.log,.json,.docx" className="hidden" onChange={handleFileUpload} />
         </div>
         <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
           <span className="rounded-full bg-(--crm-soft) px-2.5 py-0.5 text-[0.62rem] font-semibold text-(--crm-secondary)">{props.wordStats.words} words · {props.wordStats.charsNoSpace} chars</span>
