@@ -151,8 +151,25 @@ export function EditorToolbar(props: EditorToolbarProps) {
         const doc = new DOMParser().parseFromString(text, "text/html");
         props.onUploadHtml(doc.body.innerHTML, file.name.replace(/\.[^.]+$/, ""));
         props.announce(`Loaded ${file.name}`);
+      } else if (ext === "json") {
+        const text = await file.text();
+        const parsed = JSON.parse(text) as unknown;
+        let note: { title?: unknown; content?: unknown } | null = null;
+        if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === "object") note = parsed[0] as { title?: unknown; content?: unknown };
+        else if (parsed && typeof parsed === "object" && "notes" in parsed && Array.isArray((parsed as { notes?: unknown[] }).notes) && ((parsed as { notes?: unknown[] }).notes as unknown[])[0]) note = ((parsed as { notes?: unknown[] }).notes as { title?: unknown; content?: unknown }[])[0];
+        else if (parsed && typeof parsed === "object") note = parsed as { title?: unknown; content?: unknown };
+        if (note && typeof note.content === "string") {
+          const content = note.content;
+          const html = /<\/?[a-z][\s\S]*>/i.test(content)
+            ? content
+            : content.split(/\r?\n/).map((l) => `<div>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") || "<br>"}</div>`).join("");
+          props.onUploadHtml(html, typeof note.title === "string" ? note.title : file.name.replace(/\.json$/i, ""));
+          props.announce(`Loaded ${file.name}`);
+        } else {
+          props.announce("JSON has no note content");
+        }
       } else {
-        props.announce("Unsupported format — use .txt, .md, .docx, .html");
+        props.announce("Unsupported format — use .txt, .md, .docx, .html, .json");
       }
     } catch {
       props.announce("Failed to open file");
@@ -200,7 +217,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
                 {props.hasActiveNote ? (
                   <button onClick={() => { setFileMenu(false); props.onDelete(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50"><Trash2 size={14} /> Delete note</button>
                 ) : null}
-                <input ref={fileInputRef} type="file" accept=".txt,.md,.docx,.html,.htm" className="hidden" onChange={handleFileUpload} />
+                <input ref={fileInputRef} type="file" accept=".txt,.md,.docx,.html,.htm,.json" className="hidden" onChange={handleFileUpload} />
               </div>
             </>
           )}

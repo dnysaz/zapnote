@@ -200,9 +200,16 @@ export function NotesView() {
 
 
   function handleUploadHtml(html: string, title?: string) {
-    setEditor((prev) => prev ? { ...prev, content: html, ...(title ? { title } : {}) } : { id: null, title: title || "Untitled note", content: html });
+    const now = new Date().toISOString();
+    const newId = uid();
+    const finalTitle = title?.trim() || "Untitled note";
+    const newNote: Note = { id: newId, title: finalTitle, content: html, createdAt: now, updatedAt: now };
+    addNote(newNote);
+    clearDraft(draftKey);
+    setEditor({ id: newId, title: finalTitle, content: html });
     if (contentRef.current) contentRef.current.innerHTML = html;
     markSaved();
+    announce("Opened in new note");
   }
 
   function openNote(note: Note) {
@@ -515,32 +522,17 @@ export function NotesView() {
             onDownloadWord={() => void downloadWord()}
             announce={announce}
           />
-          <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#e9eaed] p-6 md:block">
-              <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-              <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
-              <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
-                <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML })} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
+            <div className="flex-1 overflow-y-auto p-0 sm:p-6">
+              <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+                <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+                <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
+                  <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
+                  <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
+                </div>
               </div>
             </div>
             <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
-          </div>
-
-          {/* Mobile: Full-screen editor — toolbar stays at top as one scrollable row */}
-          <div className="flex flex-1 flex-col md:hidden">
-            <div className="flex flex-1 items-start justify-center overflow-y-auto px-3 pb-4 pt-3">
-              <div className="flex w-full flex-col">
-                <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none" />
-                <div
-                  contentEditable
-                  suppressContentEditableWarning
-                  role="textbox"
-                  aria-multiline="true"
-                  data-ph="Start writing…"
-                  onInput={(event) => updateDraft({ content: (event.target as HTMLDivElement).innerHTML })}
-                  className="note-editor min-h-[60vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-base [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Toast */}
