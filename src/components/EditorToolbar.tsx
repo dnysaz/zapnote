@@ -205,7 +205,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setFileMenu(false)} />
               <div className="fixed z-50 mt-1 w-56 rounded-xl border border-(--crm-border) bg-white py-1 shadow-xl" style={{ top: fileAnchor.bottom + 4, left: fileAnchor.left }}>
-                <button onClick={() => { setFileMenu(false); fileInputRef.current?.click(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-(--crm-fg) hover:bg-(--crm-soft)"><FileUp size={14} /> Open / Upload…</button>
+                <button onClick={() => { fileInputRef.current?.click(); setFileMenu(false); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-(--crm-fg) hover:bg-(--crm-soft)"><FileUp size={14} /> Open / Upload…</button>
                 <button onClick={() => { setFileMenu(false); props.onNewNote(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-(--crm-fg) hover:bg-(--crm-soft)"><Plus size={14} /> New note</button>
                 <div className="my-1 h-px bg-(--crm-border-soft)" />
                 <button onClick={() => { setFileMenu(false); handlePrint(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-(--crm-fg) hover:bg-(--crm-soft)"><Printer size={14} /> Print</button>
@@ -217,10 +217,10 @@ export function EditorToolbar(props: EditorToolbarProps) {
                 {props.hasActiveNote ? (
                   <button onClick={() => { setFileMenu(false); props.onDelete(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50"><Trash2 size={14} /> Delete note</button>
                 ) : null}
-                <input ref={fileInputRef} type="file" accept=".txt,.md,.docx,.html,.htm,.json" className="hidden" onChange={handleFileUpload} />
               </div>
             </>
           )}
+          <input ref={fileInputRef} type="file" accept=".txt,.md,.docx,.html,.htm,.json" className="hidden" onChange={handleFileUpload} />
         </div>
         <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
           <span className="rounded-full bg-(--crm-soft) px-2.5 py-0.5 text-[0.62rem] font-semibold text-(--crm-secondary)">{props.wordStats.words} words · {props.wordStats.charsNoSpace} chars</span>
