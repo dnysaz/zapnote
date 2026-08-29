@@ -533,9 +533,9 @@ export function NotesView() {
             announce={announce}
           />
           <div className="hidden min-h-0 flex-1 overflow-y-auto bg-[#e9eaed] p-6 md:block">
-            <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-              <div className="pointer-events-none absolute inset-0" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
-              <div ref={paperRef} className="relative px-[64px] py-[72px]">
+              <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+              <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+              <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
                 <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.currentTarget as HTMLDivElement).innerHTML })} className="note-editor min-h-[60vh] w-full bg-transparent text-lg leading-9 text-gray-800 outline-none [&_div]:mb-1 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
               </div>
             </div>
@@ -558,25 +558,22 @@ export function NotesView() {
                 />
               </div>
             </div>
-            {/* Mobile bottom toolbar */}
-            <div className="fixed bottom-0 left-0 right-0 z-[85] border-t border-gray-100 bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2">
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-0.5 overflow-x-auto">
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("bold")} className={fsToolbarBtnMobile} title="Bold"><Bold size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("italic")} className={fsToolbarBtnMobile} title="Italic"><Italic size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("underline")} className={fsToolbarBtnMobile} title="Underline"><Underline size={16} /></button>
-                  <span className="mx-0.5 h-5 w-px bg-gray-200" />
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertUnorderedList")} className={fsToolbarBtnMobile} title="Bullet list"><List size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertOrderedList")} className={fsToolbarBtnMobile} title="Numbered list"><ListOrdered size={16} /></button>
-                  <span className="mx-0.5 h-5 w-px bg-gray-200" />
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("undo")} className={fsToolbarBtnMobile} title="Undo"><Undo2 size={16} /></button>
-                  <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("redo")} className={fsToolbarBtnMobile} title="Redo"><Redo2 size={16} /></button>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  {hasApiKey && <button onClick={() => setAiOpen(true)} className={`${fsToolbarBtnMobile} text-violet-500`} title="AI"><Sparkles size={16} /></button>}
-                  <button onClick={handleNewNote} className={fsToolbarBtnMobile} title="New"><Plus size={16} /></button>
-                  <button onClick={() => setFullscreen(false)} className={fsToolbarBtnMobile} title="Exit"><Minimize2 size={16} /></button>
-                </div>
+            {/* Mobile bottom toolbar — horizontally scrollable to reveal all actions */}
+            <div className="fixed bottom-0 left-0 right-0 z-[85] border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] pt-2">
+              <div className="flex items-center gap-0.5 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("bold")} className={fsToolbarBtnMobile} title="Bold"><Bold size={16} /></button>
+                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("italic")} className={fsToolbarBtnMobile} title="Italic"><Italic size={16} /></button>
+                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("underline")} className={fsToolbarBtnMobile} title="Underline"><Underline size={16} /></button>
+                <span className="mx-0.5 h-5 w-px shrink-0 bg-gray-200" />
+                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertUnorderedList")} className={fsToolbarBtnMobile} title="Bullet list"><List size={16} /></button>
+                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("insertOrderedList")} className={fsToolbarBtnMobile} title="Numbered list"><ListOrdered size={16} /></button>
+                <span className="mx-0.5 h-5 w-px shrink-0 bg-gray-200" />
+                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("undo")} className={fsToolbarBtnMobile} title="Undo"><Undo2 size={16} /></button>
+                <button onMouseDown={(e) => e.preventDefault()} onClick={() => execCmd("redo")} className={fsToolbarBtnMobile} title="Redo"><Redo2 size={16} /></button>
+                <span className="mx-0.5 h-5 w-px shrink-0 bg-gray-200" />
+                {hasApiKey && <button onClick={() => setAiOpen(true)} className={`${fsToolbarBtnMobile} text-violet-500`} title="AI"><Sparkles size={16} /></button>}
+                <button onClick={handleNewNote} className={fsToolbarBtnMobile} title="New"><Plus size={16} /></button>
+                <button onClick={() => setFullscreen(false)} className={fsToolbarBtnMobile} title="Exit"><Minimize2 size={16} /></button>
               </div>
             </div>
           </div>
@@ -632,8 +629,8 @@ export function NotesView() {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
               <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-              <div className="pointer-events-none absolute inset-0" style={{ margin: '72px 64px', border: '1px dashed rgba(0,0,0,0.08)' }} />
-              <div ref={paperRef} className="relative px-[64px] py-[72px]">
+              <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+              <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
                 <div
                   ref={contentRef}
                   contentEditable
