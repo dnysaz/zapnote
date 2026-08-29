@@ -295,6 +295,16 @@ export function NotesView() {
     markSaved();
   }
 
+  function renameCodeFile(index: number, name: string) {
+    setEditor((prev) => {
+      if (!prev || !prev.codeFiles) return prev;
+      const ext = name.includes(".") ? name.split(".").pop()! : "";
+      const files = prev.codeFiles.map((f, i) => (i === index ? { ...f, name, language: codeLangForExt(ext) } : f));
+      return { ...prev, codeFiles: files, content: serializeCodeFiles(files) };
+    });
+    markSaved();
+  }
+
   function updateActiveCodeContent(value: string) {
     setEditor((prev) => {
       if (!prev || !prev.codeFiles) return prev;
@@ -611,6 +621,7 @@ export function NotesView() {
               onChange={updateActiveCodeContent}
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
+              onRenameFile={renameCodeFile}
               onAddFile={addBlankCodeFile}
               onSwitchToNote={switchToNoteEditor}
               onFullscreen={() => setFullscreen(false)}
@@ -695,6 +706,7 @@ export function NotesView() {
               onChange={updateActiveCodeContent}
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
+              onRenameFile={renameCodeFile}
               onAddFile={addBlankCodeFile}
               onSwitchToNote={switchToNoteEditor}
               onFullscreen={() => setFullscreen(true)}

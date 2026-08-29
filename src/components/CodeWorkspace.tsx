@@ -34,6 +34,7 @@ type CodeWorkspaceProps = {
   onChange: (value: string) => void;
   onSwitchFile: (index: number) => void;
   onCloseFile: (index: number) => void;
+  onRenameFile: (index: number, name: string) => void;
   onAddFile: () => void;
   onSwitchToNote: () => void;
   onFullscreen: () => void;
@@ -53,6 +54,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     onChange,
     onSwitchFile,
     onCloseFile,
+    onRenameFile,
     onAddFile,
     onSwitchToNote,
     onFullscreen,
@@ -63,6 +65,8 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
   } = props;
 
   const [explorerOpen, setExplorerOpen] = useState(true);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
   const current = files[activeFile];
 
   return (
@@ -137,12 +141,41 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                 <button
                   key={i}
                   onClick={() => onSwitchFile(i)}
+                  onDoubleClick={() => {
+                    setEditingIndex(i);
+                    setEditValue(f.name);
+                  }}
+                  title="Double-click to rename"
                   className={`flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs ${
                     i === activeFile ? "bg-[#37373d] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
                   }`}
                 >
                   <FileCode size={14} className="shrink-0 text-[#4ec9b0]" />
-                  <span className="truncate">{f.name}</span>
+                  {editingIndex === i ? (
+                    <input
+                      autoFocus
+                      value={editValue}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => {
+                        const name = editValue.trim();
+                        if (name) onRenameFile(i, name);
+                        setEditingIndex(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const name = editValue.trim();
+                          if (name) onRenameFile(i, name);
+                          setEditingIndex(null);
+                        } else if (e.key === "Escape") {
+                          setEditingIndex(null);
+                        }
+                      }}
+                      className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
+                    />
+                  ) : (
+                    <span className="truncate">{f.name}</span>
+                  )}
                 </button>
               ))}
             </div>
