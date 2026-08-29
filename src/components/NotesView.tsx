@@ -116,6 +116,13 @@ function codeCardMeta(note: Note): { label: string; bg: string; fg: string; name
   return { label, bg: color.bg, fg: color.fg, name: name || "untitled" };
 }
 
+function formatFileSize(chars: number): string {
+  if (!chars) return "0 B";
+  if (chars < 1024) return `${chars} B`;
+  if (chars < 1024 * 1024) return `${(chars / 1024).toFixed(1)} KB`;
+  return `${(chars / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const { session } = useAuth();
   const { settings } = useSettings();
@@ -1004,6 +1011,61 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-(--crm-soft) text-(--crm-text)"><Search size={24} /></div>
           <p className="mt-5 text-sm font-semibold text-(--crm-fg)">{isCodeMode ? "No code files found" : "No notes found"}</p>
           <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-(--crm-muted)">Nothing matches <span className="font-semibold text-(--crm-brand)">&ldquo;{query}&rdquo;</span>. Try different keywords.</p>
+        </div>
+      ) : isCodeMode ? (
+        <div className="crm-rise mt-4 overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-(--crm-border-soft) text-[0.68rem] uppercase tracking-wide text-(--crm-muted)">
+                <th className="px-4 py-3 font-semibold">Nama File</th>
+                <th className="px-4 py-3 font-semibold">Ukuran</th>
+                <th className="px-4 py-3 font-semibold">Format</th>
+                <th className="px-4 py-3 text-right font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleNotes.map((note) => {
+                const meta = codeCardMeta(note);
+                const file = parseCodeFiles(note.content)?.[0];
+                const size = formatFileSize(file?.content?.length ?? note.content?.length ?? 0);
+                return (
+                  <tr
+                    key={note.id}
+                    onClick={() => openNote(note)}
+                    className="group cursor-pointer border-b border-(--crm-border-soft) last:border-0 hover:bg-(--crm-soft)"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-md text-[0.58rem] font-black" style={{ background: meta.bg, color: meta.fg }}>{meta.label}</span>
+                        <span className="font-medium text-(--crm-fg)">{meta.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-(--crm-muted)">{size}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-(--crm-soft) px-2 py-0.5 text-[0.7rem] font-semibold text-(--crm-secondary)">{meta.label}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => openNote(note)}
+                          className="rounded-md px-2.5 py-1 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-soft)"
+                        >
+                          Open
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete({ id: note.id, title: note.title })}
+                          className="rounded-md p-1.5 text-(--crm-muted) hover:bg-(--crm-danger-bg) hover:text-(--crm-danger)"
+                          aria-label="Delete file"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="crm-rise mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-4">
