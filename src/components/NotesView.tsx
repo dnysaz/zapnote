@@ -8,7 +8,6 @@ import {
   Trash2,
   Wand2,
   X,
-  FileCode,
 } from "lucide-react";
 import { NotesShell } from "@/components/NotesShell";
 import { useNotes } from "@/components/UnifiedNotesProvider";
@@ -18,7 +17,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
 import { NoteAiPanel } from "@/components/NoteAiPanel";
 import { EditorToolbar, EditorStatusBar, codeLangForExt } from "@/components/EditorToolbar";
-import { CodeEditor } from "@/components/CodeEditor";
+import { CodeWorkspace } from "@/components/CodeWorkspace";
 import type { Note, NoteActionItem, CodeFile } from "@/lib/crm";
 import { formatDate, uid, parseCodeFiles, serializeCodeFiles } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
@@ -322,105 +321,10 @@ export function NotesView() {
     reader.readAsText(file);
   }
 
-  function renderCodeEditor(showExplorer: boolean) {
-    const files =
-      editor?.codeFiles ??
-      (editor?.kind === "code" && editor.content ? parseCodeFiles(editor.content) ?? [] : []);
-    const active = editor?.activeFile ?? 0;
-    const current = files[active];
-
-    const titleBar = (
-      <div className="border-b border-(--crm-border) bg-white px-3 py-1.5">
-        <input
-          value={editor?.title ?? ""}
-          onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })}
-          placeholder="Note title"
-          className="w-full border-0 bg-transparent text-sm font-semibold text-(--crm-fg) outline-none placeholder:text-(--crm-muted)"
-        />
-      </div>
-    );
-
-    const tabBar = (
-      <div className="flex items-stretch gap-0 overflow-x-auto border-b border-(--crm-border) bg-(--crm-soft)">
-        {files.map((f, i) => (
-          <div
-            key={i}
-            className={`group flex shrink-0 items-center gap-1.5 border-r border-(--crm-border) ${i === active ? "bg-white text-(--crm-fg)" : "text-(--crm-secondary) hover:bg-white/60"}`}
-          >
-            <button onClick={() => switchCodeFile(i)} className="flex items-center gap-1.5 px-3 py-2 text-xs">
-              <FileCode size={13} className="shrink-0 text-violet-500" />
-              <span className="max-w-[160px] truncate">{f.name}</span>
-            </button>
-            {files.length > 1 && (
-              <button
-                onClick={() => closeCodeFile(i)}
-                className="mr-1.5 rounded p-0.5 text-(--crm-muted) opacity-0 hover:bg-(--crm-border) hover:text-red-500 group-hover:opacity-100"
-                aria-label="Close file"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        ))}
-        <button
-          onClick={() => addFileRef.current?.click()}
-          className="flex shrink-0 items-center px-3 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-white/60"
-          title="Open file in this session"
-        >
-          <Plus size={14} />
-        </button>
-      </div>
-    );
-
-    const editorArea = current ? (
-      <div className="min-h-0 flex-1">
-        <CodeEditor value={current.content} language={current.language || "plaintext"} onChange={updateActiveCodeContent} />
-      </div>
-    ) : (
-      <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-(--crm-muted)">
-        No files. Click + to open a code file.
-      </div>
-    );
-
-    if (showExplorer) {
-      return (
-        <div className="flex min-h-0 flex-1">
-          <aside className="hidden w-56 shrink-0 flex-col border-r border-(--crm-border) bg-(--crm-soft) sm:flex">
-            <div className="px-3 py-2 text-[0.7rem] font-semibold uppercase tracking-wide text-(--crm-muted)">Explorer</div>
-            <div className="flex-1 overflow-y-auto px-2">
-              {files.map((f, i) => (
-                <button
-                  key={i}
-                  onClick={() => switchCodeFile(i)}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs ${i === active ? "bg-white font-semibold text-(--crm-fg)" : "text-(--crm-secondary) hover:bg-white/60"}`}
-                >
-                  <FileCode size={13} className="shrink-0 text-violet-500" />
-                  <span className="truncate">{f.name}</span>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => addFileRef.current?.click()}
-              className="m-2 flex items-center justify-center gap-1 rounded-md border border-(--crm-border) bg-white py-1.5 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-soft)"
-            >
-              <Plus size={13} /> Add file
-            </button>
-          </aside>
-          <div className="flex min-h-0 flex-1 flex-col">
-            {titleBar}
-            {tabBar}
-            {editorArea}
-          </div>
-        </div>
-      );
-    }
-
+  function codeFilesForView(): CodeFile[] {
     return (
-      <div className="flex min-h-0 flex-1 flex-col bg-white">
-        {titleBar}
-        {tabBar}
-        {editorArea}
-      </div>
+      editor?.codeFiles ??
+      (editor?.kind === "code" && editor.content ? parseCodeFiles(editor.content) ?? [] : [])
     );
   }
 
@@ -706,50 +610,67 @@ export function NotesView() {
     // ---- Fullscreen mode ----
     if (fullscreen) {
       return (
-        <div className="fixed inset-0 z-[80] flex flex-col bg-white">
-          <EditorToolbar
-            title={editor.title}
-            html={editor.content}
-            hasApiKey={hasApiKey}
-            isGuest={isGuest}
-            hasActiveNote={!!editor.id}
-            smartBusy={smartBusy}
-            wordStats={wordStats}
-            contentRef={contentRef}
-            onContentChange={(html) => updateDraft({ content: html })}
-            onUploadHtml={handleUploadHtml}
-            onSwitchToCode={switchToCodeEditor}
-            onSwitchToNote={switchToNoteEditor}
-            isCode={editor.kind === "code"}
-            language={editor.language}
-            onBack={() => setFullscreen(false)}
-            onNewNote={handleNewNote}
-            onShare={handleShare}
-            onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
-            onFullscreen={() => setFullscreen(false)}
-            onAiOpen={() => setAiOpen(true)}
-            onRunSmart={() => void runSmart()}
-            onDownloadTxt={downloadTxt}
-            onDownloadPdf={() => void downloadPdf()}
-            onDownloadWord={() => void downloadWord()}
-            announce={announce}
-          />
+        <div className="fixed inset-0 z-[80] flex flex-col bg-[#1e1e1e]">
           {editor.kind === "code" ? (
-            renderCodeEditor(true)
+            <CodeWorkspace
+              title={editor.title}
+              onTitleChange={(t) => updateDraft({ title: t })}
+              files={codeFilesForView()}
+              activeFile={editor.activeFile ?? 0}
+              onChange={updateActiveCodeContent}
+              onSwitchFile={switchCodeFile}
+              onCloseFile={closeCodeFile}
+              onAddFile={() => addFileRef.current?.click()}
+              onSwitchToNote={switchToNoteEditor}
+              onFullscreen={() => setFullscreen(false)}
+              onShare={handleShare}
+              onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+              hasActiveNote={!!editor.id}
+              isGuest={isGuest}
+            />
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
-              <div className="flex-1 overflow-y-auto p-0 sm:p-6">
-                <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-                  <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
-                  <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
-                    <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
-                    <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.target as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
+            <>
+              <EditorToolbar
+                title={editor.title}
+                html={editor.content}
+                hasApiKey={hasApiKey}
+                isGuest={isGuest}
+                hasActiveNote={!!editor.id}
+                smartBusy={smartBusy}
+                wordStats={wordStats}
+                contentRef={contentRef}
+                onContentChange={(html) => updateDraft({ content: html })}
+                onUploadHtml={handleUploadHtml}
+                onSwitchToCode={switchToCodeEditor}
+                onSwitchToNote={switchToNoteEditor}
+                isCode={false}
+                language={editor.language}
+                onBack={() => setFullscreen(false)}
+                onNewNote={handleNewNote}
+                onShare={handleShare}
+                onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+                onFullscreen={() => setFullscreen(false)}
+                onAiOpen={() => setAiOpen(true)}
+                onRunSmart={() => void runSmart()}
+                onDownloadTxt={downloadTxt}
+                onDownloadPdf={() => void downloadPdf()}
+                onDownloadWord={() => void downloadWord()}
+                announce={announce}
+              />
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
+                <div className="flex-1 overflow-y-auto p-0 sm:p-6">
+                  <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+                    <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+                    <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
+                      <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
+                      <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.target as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+              <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
+            </>
           )}
-          <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
 
           {/* Toast */}
           {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
@@ -777,37 +698,52 @@ export function NotesView() {
       >
         <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
-          <EditorToolbar
-            title={editor.title}
-            html={editor.content}
-            hasApiKey={hasApiKey}
-            isGuest={isGuest}
-            hasActiveNote={!!editor.id}
-            smartBusy={smartBusy}
-            wordStats={wordStats}
-            contentRef={contentRef}
-            onContentChange={(html) => updateDraft({ content: html })}
-            onUploadHtml={handleUploadHtml}
-            onSwitchToCode={switchToCodeEditor}
-            onSwitchToNote={switchToNoteEditor}
-            isCode={editor.kind === "code"}
-            language={editor.language}
-            onBack={handleBack}
-            onNewNote={handleNewNote}
-            onShare={handleShare}
-            onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
-            onFullscreen={() => setFullscreen(true)}
-            onAiOpen={() => setAiOpen(true)}
-            onRunSmart={() => void runSmart()}
-            onDownloadTxt={downloadTxt}
-            onDownloadPdf={() => void downloadPdf()}
-            onDownloadWord={() => void downloadWord()}
-            announce={announce}
-          />
           {editor.kind === "code" ? (
-            renderCodeEditor(false)
+            <CodeWorkspace
+              title={editor.title}
+              onTitleChange={(t) => updateDraft({ title: t })}
+              files={codeFilesForView()}
+              activeFile={editor.activeFile ?? 0}
+              onChange={updateActiveCodeContent}
+              onSwitchFile={switchCodeFile}
+              onCloseFile={closeCodeFile}
+              onAddFile={() => addFileRef.current?.click()}
+              onSwitchToNote={switchToNoteEditor}
+              onFullscreen={() => setFullscreen(true)}
+              onShare={handleShare}
+              onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+              hasActiveNote={!!editor.id}
+              isGuest={isGuest}
+            />
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <>
+              <EditorToolbar
+                title={editor.title}
+                html={editor.content}
+                hasApiKey={hasApiKey}
+                isGuest={isGuest}
+                hasActiveNote={!!editor.id}
+                smartBusy={smartBusy}
+                wordStats={wordStats}
+                contentRef={contentRef}
+                onContentChange={(html) => updateDraft({ content: html })}
+                onUploadHtml={handleUploadHtml}
+                onSwitchToCode={switchToCodeEditor}
+                onSwitchToNote={switchToNoteEditor}
+                isCode={false}
+                language={editor.language}
+                onBack={handleBack}
+                onNewNote={handleNewNote}
+                onShare={handleShare}
+                onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+                onFullscreen={() => setFullscreen(true)}
+                onAiOpen={() => setAiOpen(true)}
+                onRunSmart={() => void runSmart()}
+                onDownloadTxt={downloadTxt}
+                onDownloadPdf={() => void downloadPdf()}
+                onDownloadWord={() => void downloadWord()}
+                announce={announce}
+              />
               <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
                 <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
                   <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
@@ -856,9 +792,9 @@ export function NotesView() {
                   )}
                 </div>
               </div>
-            </div>
+              <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
+            </>
           )}
-          <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
         </div>
 
         {confirmModal}
