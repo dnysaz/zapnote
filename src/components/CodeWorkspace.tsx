@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bug,
   ChevronLeft,
@@ -16,6 +16,7 @@ import {
   Trash2,
   X,
   Code2,
+  Check,
 } from "lucide-react";
 import type { CodeFile } from "@/lib/crm";
 
@@ -31,17 +32,27 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((m) => m.
 export type ExplorerItem = { noteId: string; name: string; language: string };
 export type OpenTabItem = { noteId: string; name: string; language: string };
 
+type MenuItem = { label?: string; onClick?: () => void; danger?: boolean; separator?: boolean };
+
+const LANGUAGES = [
+  "plaintext", "javascript", "typescript", "python", "html", "css", "json", "markdown",
+  "java", "c", "cpp", "csharp", "go", "rust", "php", "ruby", "sql", "shell", "yaml", "xml",
+];
+
 type CodeWorkspaceProps = {
   files: CodeFile[];
   activeFile: number;
   onChange: (value: string) => void;
-  onRenameFile: (index: number, name: string) => void;
   onAddFile: () => void;
   explorerItems: ExplorerItem[];
   openTabs: OpenTabItem[];
   activeNoteId: string | null | undefined;
   onSelectFile: (noteId: string) => void;
   onCloseTab: (noteId: string) => void;
+  onRenameNote: (noteId: string, name: string) => void;
+  onDuplicateNote: (noteId: string) => void;
+  onDeleteNote: (noteId: string) => void;
+  onSetLanguage: (language: string) => void;
   onBack?: () => void;
   onFullscreen: () => void;
   onShare?: () => void;
@@ -59,13 +70,16 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     files,
     activeFile,
     onChange,
-    onRenameFile,
     onAddFile,
     explorerItems,
     openTabs,
     activeNoteId,
     onSelectFile,
     onCloseTab,
+    onRenameNote,
+    onDuplicateNote,
+    onDeleteNote,
+    onSetLanguage,
     onBack,
     onFullscreen,
     onShare,
@@ -77,12 +91,73 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
   const [explorerOpen, setExplorerOpen] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [settings, setSettings] = useState({ minimap: true, wordWrap: false });
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
+  const [gearOpen, setGearOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+
+  const editorRef = useRef<unknown>(null);
+  const monacoRef = useRef<unknown>(null);
+
+  const runFormat = useCallback(() => {
+    (editorRef.current as { getAction?: (a: string) => { run?: () => void } } | null)?.getAction?.("editor.action.formatDocument")?.run?.();
+  }, []);
+
   const current = files[activeFile];
+
+  const itemForNote = (noteId: string, name: string): MenuItem[] => [
+    { label: "Open", onClick: () => onSelectFile(noteId) },
+    { label: "Rename", onClick: () => { setEditingId(noteId); setEditValue(name); } },
+    { label: "Duplicate", onClick: () => onDuplicateNote(noteId) },
+    { label: "Delete", danger: true, onClick: () => onDeleteNote(noteId) },
+    { separator: true },
+    { label: "Copy Filename", onClick: () => navigator.clipboard?.writeText(name) },
+    { label: "Copy Relative Path", onClick: () => navigator.clipboard?.writeText(name) },
+  ];
+
+  const commands = [
+    { id: "minimap", title: "View: Toggle Minimap", run: () => setSettings((s) => ({ ...s, minimap: !s.minimap })) },
+    { id: "wordwrap", title: "View: Toggle Word Wrap", run: () => setSettings((s) => ({ ...s, wordWrap: !s.wordWrap })) },
+    { id: "newfile", title: "File: New File", run: onAddFile },
+    ...(activeNoteId
+      ? [
+          { id: "rename", title: "File: Rename Active", run: () => { const it = explorerItems.find((e) => e.noteId === activeNoteId); setEditingId(activeNoteId); setEditValue(it?.name ?? ""); setGearOpen(false); } },
+          { id: "duplicate", title: "File: Duplicate Active", run: () => onDuplicateNote(activeNoteId) },
+          { id: "delete", title: "File: Delete Active", run: () => onDeleteNote(activeNoteId) },
+        ]
+      : []),
+    ...LANGUAGES.map((l) => ({ id: "lang-" + l, title: "Language: " + l, run: () => onSetLanguage(l) })),
+  ];
+
+  const filteredCommands = commands.filter((c) => c.title.toLowerCase().includes(paletteQuery.toLowerCase()));
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "P" || e.key === "p")) {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+        setPaletteQuery("");
+      } else if (e.key === "Escape") {
+        setPaletteOpen(false);
+        setGearOpen(false);
+        setCtxMenu(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const commitRename = (noteId: string, raw: string) => {
+    const name = raw.trim();
+    if (name) onRenameNote(noteId, name);
+    setEditingId(null);
+  };
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-[#1e1e1e] text-[#cccccc]">
       {/* Title bar */}
-      <div className="flex h-9 shrink-0 items-center justify-between bg-[#3c3c3c] px-2 text-xs text-[#cccccc]">
+      <div className="relative flex h-9 shrink-0 items-center justify-between bg-[#3c3c3c] px-2 text-xs text-[#cccccc]">
         <div className="flex min-w-0 items-center gap-2">
           {onBack && (
             <button
@@ -102,6 +177,12 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
               <Link2 size={14} />
             </button>
           )}
+          <button onClick={() => setPaletteOpen((o) => !o)} title="Command Palette (Ctrl/Cmd+Shift+P)" className="rounded px-2 py-1 hover:bg-[#ffffff1a]">
+            <Search size={14} />
+          </button>
+          <button onClick={() => setGearOpen((o) => !o)} title="Settings" className="rounded px-2 py-1 hover:bg-[#ffffff1a]">
+            <Settings size={14} />
+          </button>
           <button onClick={onFullscreen} title="Toggle fullscreen" className="rounded px-2 py-1 hover:bg-[#ffffff1a]">
             <Maximize2 size={14} />
           </button>
@@ -109,6 +190,27 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
             <button onClick={onDelete} title="Delete note" className="rounded px-2 py-1 text-[#f48771] hover:bg-[#ffffff1a]">
               <Trash2 size={14} />
             </button>
+          )}
+
+          {gearOpen && (
+            <>
+              <div className="fixed inset-0 z-[110]" onClick={() => setGearOpen(false)} />
+              <div className="absolute right-2 top-9 z-[111] min-w-[210px] rounded-md border border-[#454545] bg-[#252526] py-1 text-xs text-[#cccccc] shadow-xl">
+                <button onClick={() => { setSettings((s) => ({ ...s, minimap: !s.minimap })); setGearOpen(false); }} className="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-[#2a2d2e]">
+                  <span>Toggle Minimap</span> {settings.minimap && <Check size={12} />}
+                </button>
+                <button onClick={() => { setSettings((s) => ({ ...s, wordWrap: !s.wordWrap })); setGearOpen(false); }} className="flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-[#2a2d2e]">
+                  <span>Toggle Word Wrap</span> {settings.wordWrap && <Check size={12} />}
+                </button>
+                <button onClick={() => { runFormat(); setGearOpen(false); }} className="flex w-full items-center px-3 py-1.5 text-left hover:bg-[#2a2d2e]">
+                  Format Document
+                </button>
+                <div className="my-1 h-px bg-[#333]" />
+                <button onClick={() => { setPaletteOpen(true); setPaletteQuery(""); setGearOpen(false); }} className="flex w-full items-center px-3 py-1.5 text-left hover:bg-[#2a2d2e]">
+                  Command Palette…
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -156,16 +258,13 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                 return (
                   <button
                     key={item.noteId}
-                    onClick={() => {
-                      if (!isEditing) onSelectFile(item.noteId);
+                    onClick={() => { if (!isEditing) onSelectFile(item.noteId); }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(item.noteId, item.name) });
                     }}
-                    onDoubleClick={() => {
-                      if (isActive) {
-                        setEditingId(item.noteId);
-                        setEditValue(item.name);
-                      }
-                    }}
-                    title={isActive ? "Double-click to rename" : "Open file"}
+                    onDoubleClick={() => { if (isActive) { setEditingId(item.noteId); setEditValue(item.name); } }}
+                    title={isActive ? "Double-click to rename · right-click for menu" : "Open file · right-click for menu"}
                     className={`flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs ${
                       isActive ? "bg-[#37373d] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
                     }`}
@@ -177,19 +276,10 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                         value={editValue}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={() => {
-                          const name = editValue.trim();
-                          if (name && isActive) onRenameFile(activeFile, name);
-                          setEditingId(null);
-                        }}
+                        onBlur={() => commitRename(item.noteId, editValue)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            const name = editValue.trim();
-                            if (name && isActive) onRenameFile(activeFile, name);
-                            setEditingId(null);
-                          } else if (e.key === "Escape") {
-                            setEditingId(null);
-                          }
+                          if (e.key === "Enter") commitRename(item.noteId, editValue);
+                          else if (e.key === "Escape") setEditingId(null);
                         }}
                         className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
                       />
@@ -218,6 +308,10 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
               return (
                 <div
                   key={t.noteId}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(t.noteId, t.name) });
+                  }}
                   className={`group flex items-center gap-2 border-r border-[#1e1e1e] pl-3 pr-1 text-xs ${
                     isActive ? "bg-[#1e1e1e] text-white" : "bg-[#2d2d2d] text-[#969696] hover:bg-[#252526]"
                   }`}
@@ -254,9 +348,14 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                 language={current.language || "plaintext"}
                 value={current.content}
                 onChange={(v) => onChange(v ?? "")}
+                onMount={(ed, monaco) => {
+                  editorRef.current = ed;
+                  monacoRef.current = monaco;
+                }}
                 options={{
                   fontSize: 13,
-                  minimap: { enabled: true },
+                  minimap: { enabled: settings.minimap },
+                  wordWrap: settings.wordWrap ? "on" : "off",
                   scrollBeyondLastLine: false,
                   automaticLayout: true,
                   tabSize: 2,
@@ -280,8 +379,84 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
         <span className="font-semibold">{current ? current.language || "plaintext" : "—"}</span>
         <span>UTF-8</span>
         <span>{current ? current.name : "—"}</span>
+        <span
+          className="cursor-pointer hover:underline"
+          onClick={() => setSettings((s) => ({ ...s, wordWrap: !s.wordWrap }))}
+        >
+          {settings.wordWrap ? "Word Wrap" : "—"}
+        </span>
+        <span
+          className="cursor-pointer hover:underline"
+          onClick={() => setSettings((s) => ({ ...s, minimap: !s.minimap }))}
+        >
+          {settings.minimap ? "Minimap" : "—"}
+        </span>
         <span className="ml-auto opacity-90">ZapNote · Code</span>
       </div>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-[120]"
+            onClick={() => setCtxMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setCtxMenu(null); }}
+          />
+          <div
+            className="fixed z-[121] min-w-[190px] rounded-md border border-[#454545] bg-[#252526] py-1 text-xs text-[#cccccc] shadow-xl"
+            style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          >
+            {ctxMenu.items.map((it, idx) =>
+              it.separator ? (
+                <div key={idx} className="my-1 h-px bg-[#333]" />
+              ) : (
+                <button
+                  key={idx}
+                  onClick={() => { it.onClick?.(); setCtxMenu(null); }}
+                  className={`flex w-full items-center justify-between px-3 py-1.5 text-left hover:bg-[#2a2d2e] ${it.danger ? "text-[#f48771]" : ""}`}
+                >
+                  {it.label}
+                </button>
+              )
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Command palette */}
+      {paletteOpen && (
+        <div
+          className="fixed inset-0 z-[130] flex items-start justify-center bg-black/40 pt-[12vh]"
+          onClick={() => setPaletteOpen(false)}
+        >
+          <div
+            className="w-[540px] max-w-[92vw] overflow-hidden rounded-md border border-[#454545] bg-[#252526] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              autoFocus
+              value={paletteQuery}
+              onChange={(e) => setPaletteQuery(e.target.value)}
+              placeholder="Type a command…"
+              className="w-full border-b border-[#333] bg-[#3c3c3c] px-3 py-2.5 text-sm text-white outline-none"
+            />
+            <div className="max-h-72 overflow-y-auto py-1">
+              {filteredCommands.length === 0 && (
+                <div className="px-3 py-2 text-xs text-[#6c6c6c]">No matching commands</div>
+              )}
+              {filteredCommands.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => { c.run(); setPaletteOpen(false); }}
+                  className="flex w-full items-center px-3 py-1.5 text-left text-xs text-[#cccccc] hover:bg-[#2a2d2e] hover:text-white"
+                >
+                  {c.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

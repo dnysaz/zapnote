@@ -261,14 +261,72 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     announce("Opened in new note");
   }
 
-  function renameCodeFile(index: number, name: string) {
+  function renameNoteFile(noteId: string, name: string) {
+    const clean = name.trim();
+    if (!clean) return;
+    const ext = clean.includes(".") ? clean.split(".").pop()! : "";
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    const files = parseCodeFiles(note.content) ?? [];
+    const next = files.map((f, i) => (i === 0 ? { ...f, name: clean, language: codeLangForExt(ext) } : f));
+    const content = serializeCodeFiles(next);
+    const lang = codeLangForExt(ext);
+    const now = new Date().toISOString();
+    updateNote({ ...note, title: clean, content, kind: "code", language: lang, updatedAt: now });
+    if (editor?.id === noteId) {
+      setEditor((prev) => (prev ? { ...prev, title: clean, content, codeFiles: next, language: lang } : prev));
+    }
+  }
+
+  function duplicateNoteFile(noteId: string) {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    const f = parseCodeFiles(note.content)?.[0];
+    const base = f?.name ?? note.title ?? "untitled";
+    const dot = base.lastIndexOf(".");
+    const name = dot > 0 ? base.slice(0, dot) + "-copy" + base.slice(dot) : base + "-copy";
+    const language = f?.language ?? note.language ?? "plaintext";
+    const seed: CodeFile[] = [{ name, language, content: f?.content ?? "" }];
+    const content = serializeCodeFiles(seed);
+    const now = new Date().toISOString();
+    const id = uid();
+    addNote({ id, title: name, content, kind: "code", language, createdAt: now, updatedAt: now });
+    setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
+  }
+
+  function deleteNoteFile(noteId: string) {
+    const note = notes.find((n) => n.id === noteId);
+    if (note) deleteNote(note.id);
+    setOpenTabs((prev) => prev.filter((id) => id !== noteId));
+    if (editor?.id === noteId) {
+      const remaining = openTabs.filter((id) => id !== noteId);
+      if (remaining.length === 0) {
+        setEditor(null);
+        clearDraft(draftKey);
+      } else {
+        const last = remaining[remaining.length - 1];
+        const n = notes.find((x) => x.id === last);
+        if (n) {
+          const files = parseCodeFiles(n.content) ?? [];
+          setEditor({ id: n.id, title: n.title, content: n.content, kind: "code", language: n.language, codeFiles: files, activeFile: 0 });
+        }
+      }
+    }
+  }
+
+  function setActiveFileLanguage(language: string) {
     setEditor((prev) => {
       if (!prev || !prev.codeFiles) return prev;
-      const ext = name.includes(".") ? name.split(".").pop()! : "";
-      const files = prev.codeFiles.map((f, i) => (i === index ? { ...f, name, language: codeLangForExt(ext) } : f));
-      return { ...prev, codeFiles: files, content: serializeCodeFiles(files) };
+      const i = prev.activeFile ?? 0;
+      const files = prev.codeFiles.map((f, idx) => (idx === i ? { ...f, language } : f));
+      const content = serializeCodeFiles(files);
+      if (prev.id) {
+        const existing = notes.find((n) => n.id === prev.id);
+        if (existing) updateNote({ ...existing, title: prev.title, content, kind: "code", language, updatedAt: new Date().toISOString() });
+      }
+      return { ...prev, codeFiles: files, content, language };
     });
-    markSaved();
   }
 
   function selectCodeFile(noteId: string) {
@@ -708,7 +766,10 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
               onChange={updateActiveCodeContent}
-              onRenameFile={renameCodeFile}
+              onRenameNote={renameNoteFile}
+              onDuplicateNote={duplicateNoteFile}
+              onDeleteNote={deleteNoteFile}
+              onSetLanguage={setActiveFileLanguage}
               onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
               explorerItems={codeExplorer}
               openTabs={openTabItems}
@@ -795,7 +856,10 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
               onChange={updateActiveCodeContent}
-              onRenameFile={renameCodeFile}
+              onRenameNote={renameNoteFile}
+              onDuplicateNote={duplicateNoteFile}
+              onDeleteNote={deleteNoteFile}
+              onSetLanguage={setActiveFileLanguage}
               onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
               explorerItems={codeExplorer}
               openTabs={openTabItems}
