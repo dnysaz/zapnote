@@ -104,6 +104,9 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   });
   const [toast, setToast] = useState("");
   const [search, setSearch] = useState("");
+  const [newCodeOpen, setNewCodeOpen] = useState(false);
+  const [newCodeName, setNewCodeName] = useState("untitled.txt");
+  const [newCodeMode, setNewCodeMode] = useState<"note" | "file">("note");
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -224,24 +227,6 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     announce("Opened in new note");
   }
 
-  function addBlankCodeFile() {
-    setEditor((prev) => {
-      if (!prev) return prev;
-      const files = prev.codeFiles ?? parseCodeFiles(prev.content) ?? [];
-      const exists = (nm: string) => files.some((f) => f.name === nm);
-      let name = "untitled.txt";
-      if (exists(name)) {
-        let i = 1;
-        while (exists(`untitled-${i}.txt`)) i++;
-        name = `untitled-${i}.txt`;
-      }
-      const next = [...files, { name, language: "plaintext", content: "" }];
-      return { ...prev, codeFiles: next, activeFile: next.length - 1, content: serializeCodeFiles(next) };
-    });
-    markSaved();
-    announce("New file created");
-  }
-
   function closeCodeFile(index: number) {
     setEditor((prev) => {
       if (!prev || !prev.codeFiles) return prev;
@@ -298,11 +283,31 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
 
   function openNew() {
     if (isCodeMode) {
-      const seed: CodeFile[] = [{ name: "untitled.txt", language: "plaintext", content: "" }];
-      setEditor({ id: null, title: "untitled.txt", content: serializeCodeFiles(seed), kind: "code", language: "plaintext", codeFiles: seed, activeFile: 0 });
+      setNewCodeName("untitled.txt");
+      setNewCodeMode("note");
+      setNewCodeOpen(true);
       return;
     }
     setEditor({ id: null, title: "", content: "", kind: "rich" });
+  }
+
+  function createCodeFile() {
+    const name = newCodeName.trim() || "untitled.txt";
+    const ext = name.includes(".") ? name.split(".").pop()! : "";
+    const language = codeLangForExt(ext);
+    if (newCodeMode === "file") {
+      setEditor((prev) => {
+        if (!prev) return prev;
+        const files = prev.codeFiles ?? parseCodeFiles(prev.content) ?? [];
+        const next = [...files, { name, language, content: "" }];
+        return { ...prev, codeFiles: next, activeFile: next.length - 1, content: serializeCodeFiles(next) };
+      });
+      markSaved();
+    } else {
+      const seed: CodeFile[] = [{ name, language, content: "" }];
+      setEditor({ id: null, title: name, content: serializeCodeFiles(seed), kind: "code", language, codeFiles: seed, activeFile: 0 });
+    }
+    setNewCodeOpen(false);
   }
 
   /** Save the current note (if non-empty) then open a blank note. */
@@ -578,6 +583,46 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     />
   );
 
+  const newCodeModal = newCodeOpen ? (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+      onClick={() => setNewCodeOpen(false)}
+    >
+      <div
+        className="w-[320px] rounded-xl bg-[#252526] p-4 text-[#cccccc] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="mb-2 text-sm font-semibold">New code file</p>
+        <input
+          autoFocus
+          value={newCodeName}
+          onChange={(e) => setNewCodeName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") createCodeFile();
+            if (e.key === "Escape") setNewCodeOpen(false);
+          }}
+          placeholder="e.g. app.ts, script.py"
+          className="w-full rounded-md border border-[#007fd4] bg-[#3c3c3c] px-2 py-1.5 text-sm text-white outline-none"
+        />
+        <p className="mt-1.5 text-[0.68rem] text-[#858585]">Language is detected automatically from the extension.</p>
+        <div className="mt-3 flex justify-end gap-2">
+          <button
+            onClick={() => setNewCodeOpen(false)}
+            className="rounded-md px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={createCodeFile}
+            className="rounded-md bg-[#007fd4] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1c8ad6]"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   // ---------------- Editor (MS Word style paper) ----------------
   if (editor) {
     // ---- Fullscreen mode ----
@@ -592,7 +637,8 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
-              onAddFile={addBlankCodeFile}
+              onAddFile={() => { setNewCodeName("untitled.txt"); setNewCodeMode("file"); setNewCodeOpen(true); }}
+              onBack={() => setEditor(null)}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
@@ -644,6 +690,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
           {/* Toast */}
           {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
           {toast && <div className="fixed bottom-20 left-1/2 z-[90] -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-3 text-xs font-semibold text-white shadow-xl md:bottom-5">{toast}</div>}
+          {newCodeModal}
         </div>
       );
     }
@@ -674,7 +721,8 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
-              onAddFile={addBlankCodeFile}
+              onAddFile={() => { setNewCodeName("untitled.txt"); setNewCodeMode("file"); setNewCodeOpen(true); }}
+              onBack={() => setEditor(null)}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
@@ -770,6 +818,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
         )}
         {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
         {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
+      {newCodeModal}
       </NotesShell>
     );
   }
@@ -841,8 +890,9 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
         </div>
       )}
 
-      {confirmModal}
-      {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
+       {confirmModal}
+       {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
+    {newCodeModal}
     </NotesShell>
   );
 }

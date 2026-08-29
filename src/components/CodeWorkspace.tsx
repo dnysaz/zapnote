@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import {
   Bug,
+  ChevronLeft,
   Files,
   FileCode,
   GitBranch,
@@ -37,6 +38,7 @@ type CodeWorkspaceProps = {
   onRenameFile: (index: number, name: string) => void;
   onAddFile: () => void;
   onSwitchToNote?: () => void;
+  onBack?: () => void;
   onFullscreen: () => void;
   onShare?: () => void;
   onDelete?: () => void;
@@ -57,6 +59,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     onRenameFile,
     onAddFile,
     onSwitchToNote,
+    onBack,
     onFullscreen,
     onShare,
     onDelete,
@@ -74,8 +77,16 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
       {/* Title bar */}
       <div className="flex h-9 shrink-0 items-center justify-between bg-[#3c3c3c] px-2 text-xs text-[#cccccc]">
         <div className="flex min-w-0 items-center gap-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              title="Back to files"
+              className="flex items-center gap-0.5 rounded px-1.5 py-1 text-[#cccccc] hover:bg-[#ffffff1a]"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
           <Code2 size={14} className="shrink-0 text-[#4ec9b0]" />
-          <span className="select-none font-semibold tracking-wide text-[#cccccc]">ZapNote</span>
         </div>
         <div className="flex items-center gap-0.5">
           <button
