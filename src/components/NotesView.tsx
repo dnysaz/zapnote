@@ -299,6 +299,27 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     markSaved();
   }
 
+  function persistEditor() {
+    const e = editor;
+    if (!e) return;
+    const hasContent =
+      (e.content && e.content.trim()) ||
+      (e.codeFiles && e.codeFiles.length > 0) ||
+      (e.title && e.title.trim());
+    if (!hasContent) return;
+    const now = new Date().toISOString();
+    if (e.id) {
+      const existing = notes.find((n) => n.id === e.id);
+      if (existing) {
+        updateNote({ ...existing, title: e.title, content: e.content, kind: e.kind, language: e.language, updatedAt: now });
+        return;
+      }
+    }
+    const newId = uid();
+    addNote({ id: newId, title: e.title || "Untitled", content: e.content, kind: e.kind, language: e.language, createdAt: now, updatedAt: now });
+    setEditor((prev) => (prev ? { ...prev, id: newId } : prev));
+  }
+
   function openNote(note: Note) {
     if (note.kind === "code") {
       const files = parseCodeFiles(note.content) ?? [];
@@ -682,7 +703,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
-              onBack={() => { setEditor(null); clearDraft(draftKey); }}
+              onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
@@ -766,7 +787,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
-              onBack={() => { setEditor(null); clearDraft(draftKey); }}
+              onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
