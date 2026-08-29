@@ -26,13 +26,38 @@ export type Note = {
   id: string;
   title: string;
   content: string;
-  kind?: "rich" | "code";
+  kind?: "rich" | "code" | "folder";
   language?: string;
   tags?: string[];
   actionItems?: NoteActionItem[];
   createdAt: string;
   updatedAt: string;
 };
+
+// Folder system is stored via system tags (so it works in both guest
+// localStorage and the auth DB without a schema migration). A folder note is
+// marked with ZF_FOLDER; its location is encoded in a `__zf_parent:<id>` tag
+// (empty id = root).
+export const ZF_FOLDER = "__zf_folder";
+const ZF_PARENT_PREFIX = "__zf_parent:";
+
+export function isFolderNote(n: Note): boolean {
+  return n.tags?.includes(ZF_FOLDER) ?? false;
+}
+
+export function parentIdOf(n: Note): string | null {
+  const t = n.tags?.find((x) => x.startsWith(ZF_PARENT_PREFIX));
+  return t ? t.slice(ZF_PARENT_PREFIX.length) || null : null;
+}
+
+export function folderTags(parent: string | null): string[] {
+  return [ZF_FOLDER, `${ZF_PARENT_PREFIX}${parent ?? ""}`];
+}
+
+export function tagsWithParent(tags: string[] | undefined, parent: string | null): string[] {
+  const base = (tags ?? []).filter((t) => !t.startsWith(ZF_PARENT_PREFIX));
+  return [...base, `${ZF_PARENT_PREFIX}${parent ?? ""}`];
+}
 
 export type CodeFile = {
   name: string;

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Folder,
   Plus,
   Search,
   StickyNote,
@@ -19,7 +20,7 @@ import { NoteAiPanel } from "@/components/NoteAiPanel";
 import { EditorToolbar, EditorStatusBar, codeLangForExt } from "@/components/EditorToolbar";
 import { CodeWorkspace, type ExplorerItem, type OpenTabItem } from "@/components/CodeWorkspace";
 import type { Note, NoteActionItem, CodeFile } from "@/lib/crm";
-import { formatDate, uid, parseCodeFiles, serializeCodeFiles } from "@/lib/crm";
+import { formatDate, uid, parseCodeFiles, serializeCodeFiles, isFolderNote, parentIdOf, folderTags, tagsWithParent } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
 
 const DRAFT_KEY = "zapnote:draft";
@@ -146,6 +147,9 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const [newCodeOpen, setNewCodeOpen] = useState(false);
   const [newCodeName, setNewCodeName] = useState("");
   const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [moveModal, setMoveModal] = useState<{ id: string; name: string; mode: "move" | "copy" } | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -216,12 +220,36 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const query = search.trim();
   const visibleNotes = useMemo(() => {
     const byTag = (note: Note) => !activeTag || (note.tags ?? []).includes(activeTag);
-    const byMode = (note: Note) => (isCodeMode ? note.kind === "code" : note.kind !== "code");
+    const byMode = (note: Note) =>
+      isCodeMode
+        ? note.kind === "code" || isFolderNote(note)
+        : note.kind !== "code" && !isFolderNote(note);
     const base = sortedNotes.filter((n) => byMode(n) && byTag(n));
     if (query.length < 3) return base;
     const q = query.toLowerCase();
     return base.filter((note) => note.title.toLowerCase().includes(q));
   }, [sortedNotes, query, activeTag, isCodeMode]);
+
+  // Code mode: items inside the currently open folder, folders always on top.
+  const codeItems = useMemo(() => {
+    if (!isCodeMode) return [];
+    const inFolder = visibleNotes.filter((n) => parentIdOf(n) === (currentFolderId ?? null));
+    const folders = inFolder.filter(isFolderNote).sort((a, b) => a.title.localeCompare(b.title));
+    const files = inFolder.filter((n) => !isFolderNote(n)).sort((a, b) => a.title.localeCompare(b.title));
+    return [...folders, ...files];
+  }, [visibleNotes, currentFolderId, isCodeMode]);
+
+  const folderPath = useMemo(() => {
+    const path: { id: string; name: string }[] = [];
+    let id = currentFolderId;
+    while (id) {
+      const f = notes.find((n) => n.id === id);
+      if (!f) break;
+      path.unshift({ id: f.id, name: f.title || "Untitled" });
+      id = parentIdOf(f);
+    }
+    return path;
+  }, [currentFolderId, notes]);
 
   const email = session.status === "authed" ? session.email : "";
   const name = session.status === "authed" && (session as { name?: string }).name ? ((session as { name?: string }).name ?? "") : email;
@@ -415,6 +443,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
 
   function openNew() {
     if (isCodeMode) {
+      setCreatingFolder(false);
       setNewCodeName("");
       setNewCodeOpen(true);
       return;
@@ -436,6 +465,107 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
     setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
     setNewCodeOpen(false);
+  }
+
+  function createFolder() {
+    const name = (newCodeName.trim() || "New Folder").replace(/\.[^.]+$/, "");
+    const now = new Date().toISOString();
+    const id = uid();
+    addNote({
+      id,
+      title: name,
+      content: "",
+      kind: "folder",
+      tags: folderTags(currentFolderId),
+      createdAt: now,
+      updatedAt: now,
+    });
+    setNewCodeOpen(false);
+  }
+
+  function openFolder(folderId: string | null) {
+    setCurrentFolderId(folderId);
+  }
+
+  function deleteNoteWithChildren(noteId: string) {
+    const target = notes.find((n) => n.id === noteId);
+    if (!target) return;
+    if (isFolderNote(target)) {
+      // Re-parent direct children to the deleted folder's parent.
+      const parent = parentIdOf(target);
+      notes
+        .filter((n) => parentIdOf(n) === noteId)
+        .forEach((child) => {
+          updateNote({ ...child, tags: tagsWithParent(child.tags, parent), updatedAt: new Date().toISOString() });
+        });
+    }
+    deleteNote(noteId);
+    setOpenTabs((prev) => prev.filter((id) => id !== noteId));
+    if (editor?.id === noteId) {
+      const remaining = openTabs.filter((id) => id !== noteId);
+      if (remaining.length === 0) { setEditor(null); clearDraft(draftKey); }
+      else {
+        const last = remaining[remaining.length - 1];
+        const n = notes.find((x) => x.id === last);
+        if (n) { const files = parseCodeFiles(n.content) ?? []; setEditor({ id: n.id, title: n.title, content: n.content, kind: "code", language: n.language, codeFiles: files, activeFile: 0 }); }
+      }
+    }
+  }
+
+  function moveNoteTo(noteId: string, dest: string | null) {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    if (isFolderNote(note) && dest) {
+      // Prevent moving a folder into itself or its descendant.
+      let p: string | null = dest;
+      while (p) {
+        if (p === noteId) return;
+        const f = notes.find((n) => n.id === p);
+        p = f ? parentIdOf(f) : null;
+      }
+    }
+    updateNote({ ...note, tags: tagsWithParent(note.tags, dest), updatedAt: new Date().toISOString() });
+  }
+
+  function copyNoteTo(noteId: string, dest: string | null) {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    if (isFolderNote(note)) {
+      // Deep-copy folder and all descendants into dest.
+      const idMap = new Map<string, string>();
+      const clone = (srcId: string, parent: string | null) => {
+        const src = notes.find((n) => n.id === srcId);
+        if (!src) return;
+        const newId = uid();
+        idMap.set(srcId, newId);
+        const isFolder = isFolderNote(src);
+        addNote({
+          id: newId,
+          title: src.title,
+          content: src.content,
+          kind: isFolder ? "folder" : "code",
+          language: src.language,
+          tags: isFolder ? folderTags(parent) : tagsWithParent(src.tags, parent),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        notes.filter((n) => parentIdOf(n) === srcId).forEach((child) => clone(child.id, newId));
+      };
+      clone(noteId, dest);
+    } else {
+      const ext = note.title.includes(".") ? note.title.slice(note.title.lastIndexOf(".")) : "";
+      const newId = uid();
+      addNote({
+        id: newId,
+        title: note.title.replace(/\.(?=[^.]+$)/, "-copy."),
+        content: note.content,
+        kind: "code",
+        language: note.language,
+        tags: tagsWithParent(note.tags, dest),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
   }
 
   /** Save the current note (if non-empty) then open a blank note. */
@@ -720,19 +850,19 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
         className="w-[320px] rounded-xl bg-[#252526] p-4 text-[#cccccc] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="mb-2 text-sm font-semibold">New code file</p>
+        <p className="mb-2 text-sm font-semibold">{creatingFolder ? "New folder" : "New code file"}</p>
         <input
           autoFocus
           value={newCodeName}
           onChange={(e) => setNewCodeName(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") createCodeFile();
+            if (e.key === "Enter") creatingFolder ? createFolder() : createCodeFile();
             if (e.key === "Escape") setNewCodeOpen(false);
           }}
-          placeholder="e.g. app.ts, script.py"
+          placeholder={creatingFolder ? "e.g. src, utils" : "e.g. app.ts, script.py"}
           className="w-full rounded-md border border-[#007fd4] bg-[#3c3c3c] px-2 py-1.5 text-sm text-white outline-none"
         />
-        <p className="mt-1.5 text-[0.68rem] text-[#858585]">Language is detected automatically from the extension.</p>
+        {!creatingFolder && <p className="mt-1.5 text-[0.68rem] text-[#858585]">Language is detected automatically from the extension.</p>}
         <div className="mt-3 flex justify-end gap-2">
           <button
             onClick={() => setNewCodeOpen(false)}
@@ -741,7 +871,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
             Cancel
           </button>
           <button
-            onClick={createCodeFile}
+            onClick={() => creatingFolder ? createFolder() : createCodeFile()}
             className="rounded-md bg-[#007fd4] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1c8ad6]"
           >
             Create
@@ -751,10 +881,78 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     </div>
   ) : null;
 
-  // Explorer + tabs for the code workspace: list EVERY code file across /code.
+  // Move/Copy destination modal
+  const moveModalEl = moveModal ? (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+      onClick={() => setMoveModal(null)}
+    >
+      <div
+        className="w-[340px] rounded-xl bg-[#252526] p-4 text-[#cccccc] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="mb-3 text-sm font-semibold">
+          {moveModal.mode === "move" ? "Move" : "Copy"} &ldquo;{moveModal.name}&rdquo;
+        </p>
+        <p className="mb-2 text-xs text-[#858585]">Choose a destination folder:</p>
+        <div className="max-h-[240px] space-y-1 overflow-y-auto">
+          <button
+            onClick={() => {
+              if (moveModal.mode === "move") moveNoteTo(moveModal.id, null);
+              else copyNoteTo(moveModal.id, null);
+              setMoveModal(null);
+              announce(moveModal.mode === "move" ? "Moved to root" : "Copied to root");
+            }}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-[#2a2d2e]"
+          >
+            📂 Root
+          </button>
+          {notes
+            .filter((n) => isFolderNote(n) && n.id !== moveModal.id)
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .map((folder) => (
+              <button
+                key={folder.id}
+                onClick={() => {
+                  if (moveModal.mode === "move") moveNoteTo(moveModal.id, folder.id);
+                  else copyNoteTo(moveModal.id, folder.id);
+                  setMoveModal(null);
+                  announce(moveModal.mode === "move" ? `Moved to ${folder.title}` : `Copied to ${folder.title}`);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-[#2a2d2e]"
+              >
+                📁 {folder.title || "Untitled"}
+              </button>
+            ))}
+        </div>
+        <div className="mt-3 flex justify-end">
+          <button
+            onClick={() => setMoveModal(null)}
+            className="rounded-md px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  // Explorer + tabs for the code workspace: folder-aware listing.
   const codeExplorer: ExplorerItem[] = notes
-    .filter((n) => n.kind === "code")
+    .filter((n) => {
+      if (isFolderNote(n)) return parentIdOf(n) === (currentFolderId ?? null);
+      return n.kind === "code" && parentIdOf(n) === (currentFolderId ?? null);
+    })
+    .sort((a, b) => {
+      const af = isFolderNote(a) ? 0 : 1;
+      const bf = isFolderNote(b) ? 0 : 1;
+      if (af !== bf) return af - bf;
+      return a.title.localeCompare(b.title);
+    })
     .map((n) => {
+      if (isFolderNote(n)) {
+        return { noteId: n.id, name: n.title || "Untitled", language: "folder" };
+      }
       const f = parseCodeFiles(n.content)?.[0];
       return { noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? n.language ?? "plaintext" };
     });
@@ -782,6 +980,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               openTabs={openTabItems}
               activeNoteId={editor?.id}
               onSelectFile={selectCodeFile}
+              onSelectFolder={openFolder}
               onCloseTab={closeCodeTab}
               onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(false)}
@@ -836,6 +1035,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
           {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
           {toast && <div className="fixed bottom-20 left-1/2 z-[90] -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-3 text-xs font-semibold text-white shadow-xl md:bottom-5">{toast}</div>}
           {newCodeModal}
+          {moveModalEl}
         </div>
       );
     }
@@ -872,6 +1072,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               openTabs={openTabItems}
               activeNoteId={editor?.id}
               onSelectFile={selectCodeFile}
+              onSelectFolder={openFolder}
               onCloseTab={closeCodeTab}
               onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(true)}
@@ -970,6 +1171,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
         {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
         {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
       {newCodeModal}
+      {moveModalEl}
       </NotesShell>
     );
   }
@@ -983,8 +1185,44 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
             <h2 className="text-xl font-semibold tracking-[-.04em] sm:text-[1.625rem]">{isCodeMode ? "Code editor" : "Project notes"}</h2>
             <p className="mt-1 text-sm text-(--crm-secondary)">{query.length >= 3 ? `${visibleNotes.length} ${visibleNotes.length === 1 ? "match" : "matches"} for "${query}"` : `${visibleNotes.length} ${visibleNotes.length === 1 ? (isCodeMode ? "file" : "note") : (isCodeMode ? "files" : "notes")} ${isCodeMode ? "in your workspace." : "to manage your projects."}`}</p>
           </div>
-          <button onClick={openNew} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"><Plus size={12} />{isCodeMode ? "New File" : "New Note"}</button>
+          <div className="flex items-center gap-2">
+            {isCodeMode && (
+              <button
+                onClick={() => { setCreatingFolder(true); setNewCodeName(""); setNewCodeOpen(true); }}
+                className="flex shrink-0 items-center gap-1 rounded-md border border-(--crm-border) bg-(--crm-surface) px-2 py-1.5 text-[0.65rem] font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"
+              >
+                <Folder size={12} />New Folder
+              </button>
+            )}
+            <button onClick={() => { setCreatingFolder(false); openNew(); }} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"><Plus size={12} />{isCodeMode ? "New File" : "New Note"}</button>
+          </div>
         </div>
+        {/* Breadcrumb for code mode */}
+        {isCodeMode && (
+          <div className="mt-3 flex items-center gap-1 text-xs text-(--crm-muted)">
+            <button
+              onClick={() => openFolder(null)}
+              className={`rounded px-1.5 py-0.5 transition-colors ${currentFolderId === null ? "font-semibold text-(--crm-fg)" : "hover:bg-(--crm-soft) hover:text-(--crm-fg)"}`}
+            >
+              📂 Root
+            </button>
+            {folderPath.map((f) => (
+              <span key={f.id} className="flex items-center gap-1">
+                <span className="text-(--crm-faint)">/</span>
+                <button
+                  onClick={() => openFolder(f.id)}
+                  className={`rounded px-1.5 py-0.5 transition-colors ${
+                    folderPath[folderPath.length - 1]?.id === f.id
+                      ? "font-semibold text-(--crm-fg)"
+                      : "hover:bg-(--crm-soft) hover:text-(--crm-fg)"
+                  }`}
+                >
+                  {f.name}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
         <div className="relative mt-3">
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={isCodeMode ? "Search code…" : "Search notes…"} className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:max-w-[240px]" />
@@ -1014,48 +1252,88 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
         </div>
       ) : isCodeMode ? (
         <div className="crm-rise mt-4 overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white">
+          {currentFolderId && (
+            <div className="flex items-center gap-2 border-b border-(--crm-border-soft) px-4 py-2 text-xs">
+              <button onClick={() => openFolder(null)} className="text-(--crm-brand) hover:underline">⬆ Up</button>
+            </div>
+          )}
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-(--crm-border-soft) text-[0.68rem] uppercase tracking-wide text-(--crm-muted)">
-                <th className="px-4 py-3 font-semibold">Nama File</th>
-                <th className="px-4 py-3 font-semibold">Ukuran</th>
+                <th className="px-4 py-3 font-semibold">Name</th>
+                <th className="px-4 py-3 font-semibold">Size</th>
                 <th className="px-4 py-3 font-semibold">Format</th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {visibleNotes.map((note) => {
-                const meta = codeCardMeta(note);
-                const file = parseCodeFiles(note.content)?.[0];
-                const size = formatFileSize(file?.content?.length ?? note.content?.length ?? 0);
+              {codeItems.length === 0 && (
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-(--crm-muted)">This folder is empty. Create a new file or folder.</td></tr>
+              )}
+              {codeItems.map((note) => {
+                const isFolder = isFolderNote(note);
+                const meta = isFolder ? null : codeCardMeta(note);
+                const file = isFolder ? null : parseCodeFiles(note.content)?.[0];
+                const size = isFolder ? "—" : formatFileSize(file?.content?.length ?? note.content?.length ?? 0);
                 return (
                   <tr
                     key={note.id}
-                    onClick={() => openNote(note)}
+                    onClick={() => isFolder ? openFolder(note.id) : openNote(note)}
                     className="group cursor-pointer border-b border-(--crm-border-soft) last:border-0 hover:bg-(--crm-soft)"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-md text-[0.58rem] font-black" style={{ background: meta.bg, color: meta.fg }}>{meta.label}</span>
-                        <span className="font-medium text-(--crm-fg)">{meta.name}</span>
+                        {isFolder ? (
+                          <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-600">
+                            <Folder size={16} />
+                          </span>
+                        ) : (
+                          <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-md text-[0.58rem] font-black" style={{ background: meta!.bg, color: meta!.fg }}>{meta!.label}</span>
+                        )}
+                        <span className="font-medium text-(--crm-fg)">{isFolder ? note.title || "Untitled" : meta!.name}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 tabular-nums text-(--crm-muted)">{size}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-(--crm-soft) px-2 py-0.5 text-[0.7rem] font-semibold text-(--crm-secondary)">{meta.label}</span>
+                      {isFolder ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-600">Folder</span>
+                      ) : (
+                        <span className="rounded-full bg-(--crm-soft) px-2 py-0.5 text-[0.7rem] font-semibold text-(--crm-secondary)">{meta!.label}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        {isFolder ? (
+                          <button
+                            onClick={() => openFolder(note.id)}
+                            className="rounded-md px-2.5 py-1 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-soft)"
+                          >
+                            Open
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openNote(note)}
+                            className="rounded-md px-2.5 py-1 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-soft)"
+                          >
+                            Open
+                          </button>
+                        )}
                         <button
-                          onClick={() => openNote(note)}
-                          className="rounded-md px-2.5 py-1 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-soft)"
+                          onClick={() => setMoveModal({ id: note.id, name: note.title || "Untitled", mode: "move" })}
+                          className="rounded-md px-2 py-1 text-xs text-(--crm-muted) hover:bg-(--crm-soft) hover:text-(--crm-fg)"
                         >
-                          Open
+                          Move
                         </button>
                         <button
-                          onClick={() => setConfirmDelete({ id: note.id, title: note.title })}
+                          onClick={() => setMoveModal({ id: note.id, name: note.title || "Untitled", mode: "copy" })}
+                          className="rounded-md px-2 py-1 text-xs text-(--crm-muted) hover:bg-(--crm-soft) hover:text-(--crm-fg)"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          onClick={() => deleteNoteWithChildren(note.id)}
                           className="rounded-md p-1.5 text-(--crm-muted) hover:bg-(--crm-danger-bg) hover:text-(--crm-danger)"
-                          aria-label="Delete file"
+                          aria-label="Delete"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1117,6 +1395,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
        {confirmModal}
        {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
     {newCodeModal}
+    {moveModalEl}
     </NotesShell>
   );
 }

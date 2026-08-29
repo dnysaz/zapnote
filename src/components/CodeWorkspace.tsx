@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   Files,
   FileCode,
+  Folder,
   GitBranch,
   Link2,
   Maximize2,
@@ -57,6 +58,7 @@ type CodeWorkspaceProps = {
   onFullscreen: () => void;
   onShare?: () => void;
   onDelete?: () => void;
+  onSelectFolder?: (folderId: string) => void;
   hasActiveNote?: boolean;
   isGuest?: boolean;
 };
@@ -84,6 +86,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     onFullscreen,
     onShare,
     onDelete,
+    onSelectFolder,
     hasActiveNote,
     isGuest,
   } = props;
@@ -241,7 +244,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
           </button>
         </div>
 
-        {/* Explorer — all code files across /code */}
+        {/* Explorer — folder-aware listing */}
         {explorerOpen && (
           <div className="flex w-60 shrink-0 flex-col bg-[#252526] text-[#cccccc]">
             <div className="px-3 pb-1 pt-2 text-[0.7rem] font-semibold uppercase tracking-wide text-[#bbbbbb]">
@@ -255,21 +258,30 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
               {explorerItems.map((item) => {
                 const isActive = item.noteId === activeNoteId;
                 const isEditing = editingId === item.noteId;
+                const isFolder = item.language === "folder";
                 return (
                   <button
                     key={item.noteId}
-                    onClick={() => { if (!isEditing) onSelectFile(item.noteId); }}
+                    onClick={() => {
+                      if (isEditing) return;
+                      if (isFolder && onSelectFolder) onSelectFolder(item.noteId);
+                      else onSelectFile(item.noteId);
+                    }}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(item.noteId, item.name) });
                     }}
                     onDoubleClick={() => { if (isActive) { setEditingId(item.noteId); setEditValue(item.name); } }}
-                    title={isActive ? "Double-click to rename · right-click for menu" : "Open file · right-click for menu"}
+                    title={isActive ? "Double-click to rename · right-click for menu" : isFolder ? "Open folder" : "Open file · right-click for menu"}
                     className={`flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs ${
                       isActive ? "bg-[#37373d] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
                     }`}
                   >
-                    <FileCode size={14} className="shrink-0 text-[#4ec9b0]" />
+                    {isFolder ? (
+                      <Folder size={14} className="shrink-0 text-[#dcb67a]" />
+                    ) : (
+                      <FileCode size={14} className="shrink-0 text-[#4ec9b0]" />
+                    )}
                     {isEditing ? (
                       <input
                         autoFocus
@@ -284,7 +296,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                         className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
                       />
                     ) : (
-                      <span className="truncate">{item.name}</span>
+                      <span className="truncate">{isFolder ? item.name : item.name}</span>
                     )}
                   </button>
                 );
