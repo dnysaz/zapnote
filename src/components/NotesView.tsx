@@ -369,6 +369,8 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     persistEditor();
     const note = notes.find((n) => n.id === noteId);
     if (!note) return;
+    // Always sync currentFolderId to this file's parent so new files land here.
+    setCurrentFolderId(parentIdOf(note));
     const files = parseCodeFiles(note.content) ?? [];
     setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
     setOpenTabs((prev) => (prev.includes(noteId) ? prev : [...prev, noteId]));
@@ -426,6 +428,8 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
 
   function openNote(note: Note) {
     if (note.kind === "code") {
+      // Sync currentFolderId so new files/folders land in this file's parent.
+      setCurrentFolderId(parentIdOf(note));
       const files = parseCodeFiles(note.content) ?? [];
       setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
       if (isCodeMode) setOpenTabs((prev) => (prev.includes(note.id) ? prev : [...prev, note.id]));
