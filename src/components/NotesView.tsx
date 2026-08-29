@@ -487,6 +487,18 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     setCurrentFolderId(folderId);
   }
 
+  function navigateUp() {
+    if (!currentFolderId) return;
+    const current = notes.find((n) => n.id === currentFolderId);
+    setCurrentFolderId(current ? parentIdOf(current) : null);
+  }
+
+  const currentFolderName = useMemo(() => {
+    if (!currentFolderId) return "";
+    const f = notes.find((n) => n.id === currentFolderId);
+    return f ? f.title || "Untitled" : "";
+  }, [currentFolderId, notes]);
+
   function handleDeleteItem(noteId: string, title: string, isFolder: boolean) {
     if (isFolder) {
       const childCount = notes.filter((n) => parentIdOf(n) === noteId).length;
@@ -1015,14 +1027,20 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onDuplicateNote={duplicateNoteFile}
               onDeleteNote={deleteNoteFile}
               onSetLanguage={setActiveFileLanguage}
-              onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
+              onAddFile={() => { setCreatingFolder(false); setNewCodeName(""); setNewCodeOpen(true); }}
+              onAddFolder={() => { setCreatingFolder(true); setNewCodeName(""); setNewCodeOpen(true); }}
               explorerItems={codeExplorer}
               openTabs={openTabItems}
               activeNoteId={editor?.id}
               onSelectFile={selectCodeFile}
               onSelectFolder={openFolder}
               onCloseTab={closeCodeTab}
-              onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
+              onBack={() => {
+                if (currentFolderId) { navigateUp(); }
+                else { persistEditor(); setEditor(null); clearDraft(draftKey); }
+              }}
+              onNavigateUp={currentFolderId ? navigateUp : undefined}
+              currentFolderName={currentFolderName || "Workspace"}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
@@ -1107,14 +1125,20 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onDuplicateNote={duplicateNoteFile}
               onDeleteNote={deleteNoteFile}
               onSetLanguage={setActiveFileLanguage}
-              onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
+              onAddFile={() => { setCreatingFolder(false); setNewCodeName(""); setNewCodeOpen(true); }}
+              onAddFolder={() => { setCreatingFolder(true); setNewCodeName(""); setNewCodeOpen(true); }}
               explorerItems={codeExplorer}
               openTabs={openTabItems}
               activeNoteId={editor?.id}
               onSelectFile={selectCodeFile}
               onSelectFolder={openFolder}
               onCloseTab={closeCodeTab}
-              onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
+              onBack={() => {
+                if (currentFolderId) { navigateUp(); }
+                else { persistEditor(); setEditor(null); clearDraft(draftKey); }
+              }}
+              onNavigateUp={currentFolderId ? navigateUp : undefined}
+              currentFolderName={currentFolderName || "Workspace"}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
               onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}

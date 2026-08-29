@@ -8,6 +8,7 @@ import {
   Files,
   FileCode,
   Folder,
+  FolderOpen,
   GitBranch,
   Link2,
   Maximize2,
@@ -45,6 +46,7 @@ type CodeWorkspaceProps = {
   activeFile: number;
   onChange: (value: string) => void;
   onAddFile: () => void;
+  onAddFolder?: () => void;
   explorerItems: ExplorerItem[];
   openTabs: OpenTabItem[];
   activeNoteId: string | null | undefined;
@@ -59,6 +61,8 @@ type CodeWorkspaceProps = {
   onShare?: () => void;
   onDelete?: () => void;
   onSelectFolder?: (folderId: string) => void;
+  onNavigateUp?: () => void;
+  currentFolderName?: string;
   hasActiveNote?: boolean;
   isGuest?: boolean;
 };
@@ -73,6 +77,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     activeFile,
     onChange,
     onAddFile,
+    onAddFolder,
     explorerItems,
     openTabs,
     activeNoteId,
@@ -87,6 +92,8 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     onShare,
     onDelete,
     onSelectFolder,
+    onNavigateUp,
+    currentFolderName,
     hasActiveNote,
     isGuest,
   } = props;
@@ -123,6 +130,8 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     { id: "minimap", title: "View: Toggle Minimap", run: () => setSettings((s) => ({ ...s, minimap: !s.minimap })) },
     { id: "wordwrap", title: "View: Toggle Word Wrap", run: () => setSettings((s) => ({ ...s, wordWrap: !s.wordWrap })) },
     { id: "newfile", title: "File: New File", run: onAddFile },
+    ...(onAddFolder ? [{ id: "newfolder", title: "Folder: New Folder", run: onAddFolder }] : []),
+    ...(onNavigateUp ? [{ id: "goup", title: "Folder: Go Up", run: onNavigateUp }] : []),
     ...(activeNoteId
       ? [
           { id: "rename", title: "File: Rename Active", run: () => { const it = explorerItems.find((e) => e.noteId === activeNoteId); setEditingId(activeNoteId); setEditValue(it?.name ?? ""); setGearOpen(false); } },
@@ -171,8 +180,17 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
               <ChevronLeft size={16} />
             </button>
           )}
+          {onNavigateUp && (
+            <button
+              onClick={onNavigateUp}
+              title="Go up one folder"
+              className="flex items-center gap-0.5 rounded px-1.5 py-1 text-[#cccccc] hover:bg-[#ffffff1a]"
+            >
+              <FolderOpen size={14} className="text-[#dcb67a]" />
+            </button>
+          )}
           <Code2 size={14} className="shrink-0 text-[#4ec9b0]" />
-          <span className="truncate text-[#cccccc]">Workspace</span>
+          <span className="truncate text-[#cccccc]">{currentFolderName || "Workspace"}</span>
         </div>
         <div className="flex items-center gap-0.5">
           {!isGuest && hasActiveNote && onShare && (
@@ -302,12 +320,22 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                 );
               })}
             </div>
-            <button
-              onClick={onAddFile}
-              className="m-2 flex items-center justify-center gap-1 rounded-sm border border-[#3c3c3c] py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
-            >
-              <Plus size={14} /> Add file
-            </button>
+            <div className="flex gap-1 m-2">
+              <button
+                onClick={onAddFile}
+                className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-[#3c3c3c] py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
+              >
+                <Plus size={14} /> File
+              </button>
+              {onAddFolder && (
+                <button
+                  onClick={onAddFolder}
+                  className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-[#3c3c3c] py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
+                >
+                  <Folder size={14} className="text-[#dcb67a]" /> Folder
+                </button>
+              )}
+            </div>
           </div>
         )}
 
