@@ -17,7 +17,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
 import { NoteAiPanel } from "@/components/NoteAiPanel";
 import { EditorToolbar, EditorStatusBar, codeLangForExt } from "@/components/EditorToolbar";
-import { CodeWorkspace } from "@/components/CodeWorkspace";
+import { CodeWorkspace, type ExplorerItem, type OpenTabItem } from "@/components/CodeWorkspace";
 import type { Note, NoteActionItem, CodeFile } from "@/lib/crm";
 import { formatDate, uid, parseCodeFiles, serializeCodeFiles } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
@@ -138,6 +138,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const [search, setSearch] = useState("");
   const [newCodeOpen, setNewCodeOpen] = useState(false);
   const [newCodeName, setNewCodeName] = useState("");
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -260,24 +261,6 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     announce("Opened in new note");
   }
 
-  function closeCodeFile(index: number) {
-    setEditor((prev) => {
-      if (!prev || !prev.codeFiles) return prev;
-      const files = prev.codeFiles.filter((_, i) => i !== index);
-      if (files.length === 0) {
-        return { ...prev, codeFiles: [], activeFile: 0, content: serializeCodeFiles([]) };
-      }
-      const active = prev.activeFile && prev.activeFile >= index ? Math.max(0, prev.activeFile - 1) : prev.activeFile ?? 0;
-      return { ...prev, codeFiles: files, activeFile: active, content: serializeCodeFiles(files) };
-    });
-    markSaved();
-  }
-
-  function switchCodeFile(index: number) {
-    setEditor((prev) => (prev ? { ...prev, activeFile: index } : prev));
-    markSaved();
-  }
-
   function renameCodeFile(index: number, name: string) {
     setEditor((prev) => {
       if (!prev || !prev.codeFiles) return prev;
@@ -286,6 +269,35 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
       return { ...prev, codeFiles: files, content: serializeCodeFiles(files) };
     });
     markSaved();
+  }
+
+  function selectCodeFile(noteId: string) {
+    if (editor?.id === noteId) return;
+    persistEditor();
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    const files = parseCodeFiles(note.content) ?? [];
+    setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
+    setOpenTabs((prev) => (prev.includes(noteId) ? prev : [...prev, noteId]));
+  }
+
+  function closeCodeTab(noteId: string) {
+    persistEditor();
+    const next = openTabs.filter((id) => id !== noteId);
+    setOpenTabs(next);
+    if (editor?.id === noteId) {
+      if (next.length === 0) {
+        setEditor(null);
+        clearDraft(draftKey);
+      } else {
+        const last = next[next.length - 1];
+        const note = notes.find((n) => n.id === last);
+        if (note) {
+          const files = parseCodeFiles(note.content) ?? [];
+          setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
+        }
+      }
+    }
   }
 
   function updateActiveCodeContent(value: string) {
@@ -323,6 +335,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     if (note.kind === "code") {
       const files = parseCodeFiles(note.content) ?? [];
       setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
+      if (isCodeMode) setOpenTabs((prev) => (prev.includes(note.id) ? prev : [...prev, note.id]));
       return;
     }
     setEditor({ id: note.id, title: note.title, content: note.content });
@@ -356,6 +369,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     const content = serializeCodeFiles(seed);
     addNote({ id, title: name, content, kind: "code", language, createdAt: now, updatedAt: now });
     setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
+    setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
     setNewCodeOpen(false);
   }
 
@@ -672,6 +686,17 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     </div>
   ) : null;
 
+  // Explorer + tabs for the code workspace: list EVERY code file across /code.
+  const codeExplorer: ExplorerItem[] = notes
+    .filter((n) => n.kind === "code")
+    .map((n) => {
+      const f = parseCodeFiles(n.content)?.[0];
+      return { noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? n.language ?? "plaintext" };
+    });
+  const openTabItems: OpenTabItem[] = openTabs
+    .map((id) => codeExplorer.find((e) => e.noteId === id))
+    .filter((x): x is ExplorerItem => Boolean(x));
+
   // ---------------- Editor (MS Word style paper) ----------------
   if (editor) {
     // ---- Fullscreen mode ----
@@ -683,10 +708,13 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
               onChange={updateActiveCodeContent}
-              onSwitchFile={switchCodeFile}
-              onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
+              explorerItems={codeExplorer}
+              openTabs={openTabItems}
+              activeNoteId={editor?.id}
+              onSelectFile={selectCodeFile}
+              onCloseTab={closeCodeTab}
               onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
@@ -767,10 +795,13 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
               onChange={updateActiveCodeContent}
-              onSwitchFile={switchCodeFile}
-              onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
               onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
+              explorerItems={codeExplorer}
+              openTabs={openTabItems}
+              activeNoteId={editor?.id}
+              onSelectFile={selectCodeFile}
+              onCloseTab={closeCodeTab}
               onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
