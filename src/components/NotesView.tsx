@@ -139,9 +139,9 @@ export function NotesView() {
     if (node.innerHTML !== display) {
       node.innerHTML = display;
     }
-    // Intentionally runs only when the edited note or view mode changes, not per keystroke.
+    // Intentionally runs only when the edited note, view mode, or editor kind changes, not per keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor?.id, fullscreen]);
+  }, [editor?.id, fullscreen, editor?.kind]);
 
   useEffect(() => () => {
     if (savedTimer.current) window.clearTimeout(savedTimer.current);
@@ -224,23 +224,42 @@ export function NotesView() {
     announce("Opened in new note");
   }
 
-  function handleUploadCode(raw: string, language: string, name?: string) {
-    // When we're already inside a code session, fold the uploaded file into
-    // the current note as an extra tab instead of spawning a new note.
-    if (editor?.kind === "code") {
-      addCodeFile(raw, language, name || "untitled.txt");
-      return;
+  function switchToCodeEditor() {
+    if (!editor) return;
+    const plain = toPlainText(editor.content);
+    const ext = editor.title.split(".").pop();
+    const language = codeLangForExt(ext);
+    const name = editor.title.trim() || "untitled.txt";
+    const files: CodeFile[] = [{ name, language, content: plain }];
+    const content = serializeCodeFiles(files);
+    setEditor({ ...editor, kind: "code", language, codeFiles: files, activeFile: 0, content });
+    if (editor.id) {
+      const existing = notes.find((n) => n.id === editor.id);
+      if (existing) {
+        updateNote({ ...existing, title: editor.title, content, kind: "code", language, updatedAt: new Date().toISOString() });
+      }
     }
-    const now = new Date().toISOString();
-    const newId = uid();
-    const finalTitle = name?.trim() || "Untitled note";
-    const files: CodeFile[] = [{ name: name || "untitled.txt", language, content: raw }];
-    const newNote: Note = { id: newId, title: finalTitle, content: serializeCodeFiles(files), kind: "code", language, createdAt: now, updatedAt: now };
-    addNote(newNote);
-    clearDraft(draftKey);
-    setEditor({ id: newId, title: finalTitle, content: serializeCodeFiles(files), kind: "code", language, codeFiles: files, activeFile: 0 });
     markSaved();
-    announce("Opened in code editor");
+    announce("Switched to code editor");
+  }
+
+  function switchToNoteEditor() {
+    if (!editor) return;
+    const files = editor.codeFiles ?? parseCodeFiles(editor.content) ?? [];
+    const text = files.length ? files[editor.activeFile ?? 0].content : editor.content;
+    const content = text
+      .split(/\r?\n/)
+      .map((l) => `<div>${l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") || "<br>"}</div>`)
+      .join("");
+    setEditor({ ...editor, kind: "rich", codeFiles: undefined, activeFile: undefined, content });
+    if (editor.id) {
+      const existing = notes.find((n) => n.id === editor.id);
+      if (existing) {
+        updateNote({ ...existing, title: editor.title, content, kind: "rich", language: undefined, updatedAt: new Date().toISOString() });
+      }
+    }
+    markSaved();
+    announce("Switched to note editor");
   }
 
   function addCodeFile(raw: string, language: string, name: string) {
@@ -421,10 +440,10 @@ export function NotesView() {
       if (editor.id) {
         const existing = notes.find((n) => n.id === editor.id);
         if (existing) {
-          updateNote({ ...existing, title: finalTitle, content, updatedAt: now });
+          updateNote({ ...existing, title: finalTitle, content, kind: editor.kind, language: editor.language, updatedAt: now });
         }
       } else {
-        addNote({ id: uid(), title: finalTitle, content, createdAt: now, updatedAt: now });
+        addNote({ id: uid(), title: finalTitle, content, kind: editor.kind, language: editor.language, createdAt: now, updatedAt: now });
       }
       announce("Note saved");
     }
@@ -493,14 +512,14 @@ export function NotesView() {
       if (editor.id) {
         const existing = notes.find((n) => n.id === editor.id);
         if (existing) {
-          base = { ...existing, title, content: editor.content, updatedAt: now };
+          base = { ...existing, title, content: editor.content, kind: editor.kind, language: editor.language, updatedAt: now };
           updateNote(base);
         } else {
-          base = { id: editor.id, title, content: editor.content, tags: [], actionItems: [], createdAt: now, updatedAt: now };
+          base = { id: editor.id, title, content: editor.content, kind: editor.kind, language: editor.language, tags: [], actionItems: [], createdAt: now, updatedAt: now };
         }
       } else {
         const newId = uid();
-        base = { id: newId, title, content: editor.content, tags: [], actionItems: [], createdAt: now, updatedAt: now };
+        base = { id: newId, title, content: editor.content, kind: editor.kind, language: editor.language, tags: [], actionItems: [], createdAt: now, updatedAt: now };
         addNote(base);
         clearDraft(draftKey);
         setEditor((prev) => (prev ? { ...prev, id: newId } : prev));
@@ -626,15 +645,15 @@ export function NotesView() {
     const now = new Date().toISOString();
     const finalTitle = title || "Untitled note";
     let noteId = editor.id;
-    if (editor.id) {
-      const existing = notes.find((n) => n.id === editor.id);
-      if (existing) {
-        updateNote({ ...existing, title: finalTitle, content, updatedAt: now });
+      if (editor.id) {
+        const existing = notes.find((n) => n.id === editor.id);
+        if (existing) {
+          updateNote({ ...existing, title: finalTitle, content, kind: editor.kind, language: editor.language, updatedAt: now });
+        }
+      } else {
+        noteId = uid();
+        addNote({ id: noteId, title: finalTitle, content, kind: editor.kind, language: editor.language, createdAt: now, updatedAt: now });
       }
-    } else {
-      noteId = uid();
-      addNote({ id: noteId, title: finalTitle, content, createdAt: now, updatedAt: now });
-    }
     clearDraft(draftKey);
     setEditor({ id: noteId, title: finalTitle, content });
     setShareNote({ id: noteId!, title: finalTitle });
@@ -655,7 +674,7 @@ export function NotesView() {
     if (editor.id) {
       const existing = notes.find((n) => n.id === editor.id);
       if (existing) {
-        updateNote({ ...existing, title: finalTitle, content, updatedAt: now });
+        updateNote({ ...existing, title: finalTitle, content, kind: editor.kind, language: editor.language, updatedAt: now });
         announce("Note saved");
       }
     } else {
@@ -699,7 +718,8 @@ export function NotesView() {
             contentRef={contentRef}
             onContentChange={(html) => updateDraft({ content: html })}
             onUploadHtml={handleUploadHtml}
-            onUploadCode={handleUploadCode}
+            onSwitchToCode={switchToCodeEditor}
+            onSwitchToNote={switchToNoteEditor}
             isCode={editor.kind === "code"}
             language={editor.language}
             onBack={() => setFullscreen(false)}
@@ -768,7 +788,8 @@ export function NotesView() {
             contentRef={contentRef}
             onContentChange={(html) => updateDraft({ content: html })}
             onUploadHtml={handleUploadHtml}
-            onUploadCode={handleUploadCode}
+            onSwitchToCode={switchToCodeEditor}
+            onSwitchToNote={switchToNoteEditor}
             isCode={editor.kind === "code"}
             language={editor.language}
             onBack={handleBack}

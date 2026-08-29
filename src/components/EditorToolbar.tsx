@@ -32,6 +32,7 @@ import {
   Indent,
   Outdent,
   ArrowLeft,
+  Code2,
 } from "lucide-react";
 
 export type EditorToolbarProps = {
@@ -58,7 +59,8 @@ export type EditorToolbarProps = {
   announce: (msg: string) => void;
   isCode?: boolean;
   language?: string;
-  onUploadCode?: (raw: string, language: string, title?: string) => void;
+  onSwitchToCode?: () => void;
+  onSwitchToNote?: () => void;
 };
 
 export const CODE_EXT_LANG: Record<string, string> = {
@@ -142,7 +144,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
     const ext = file.name.split(".").pop()?.toLowerCase();
     const codeMap: Record<string, string> = CODE_EXT_LANG;
     try {
-      if (ext === "txt" || ext === "md") {
+      if (ext === "txt" || ext === "md" || (ext && ext in codeMap)) {
         const text = await file.text();
         const html = text
           .split(/\r?\n/)
@@ -162,12 +164,6 @@ export function EditorToolbar(props: EditorToolbarProps) {
           .join("");
         props.onUploadHtml(wrapped || html, file.name.replace(/\.docx$/i, ""));
         props.announce(`Imported ${file.name}`);
-      } else if (ext && ext in codeMap) {
-        const text = await file.text();
-        props.onUploadCode?.(text, codeMap[ext], file.name);
-        props.announce(`Opened ${file.name}`);
-      } else {
-        props.announce("Unsupported format — use .txt, .md, .docx, .html, .css, .js, .ts, .py, .php, .xml, .json, …");
       }
     } catch {
       props.announce("Failed to open file");
@@ -304,6 +300,15 @@ export function EditorToolbar(props: EditorToolbarProps) {
           )}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          {props.isCode ? (
+            <button onClick={props.onSwitchToNote} className={`${btn} text-violet-700`} title="Switch to note editor">
+              <FileText size={15} /> <span className="hidden sm:inline">Note editor</span>
+            </button>
+          ) : (
+            <button onClick={props.onSwitchToCode} className={`${btn} text-violet-700`} title="Switch to code editor">
+              <Code2 size={15} /> <span className="hidden sm:inline">Code editor</span>
+            </button>
+          )}
           {!props.isGuest && props.hasActiveNote && (
             <button onClick={props.onShare} className={btn} title="Share"><Link2 size={15} /></button>
           )}
