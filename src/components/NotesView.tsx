@@ -8,6 +8,7 @@ import {
   Trash2,
   Wand2,
   X,
+  FileCode,
 } from "lucide-react";
 import { NotesShell } from "@/components/NotesShell";
 import { useNotes } from "@/components/UnifiedNotesProvider";
@@ -16,10 +17,10 @@ import { useSettings } from "@/components/SettingsProvider";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
 import { NoteAiPanel } from "@/components/NoteAiPanel";
-import { EditorToolbar, EditorStatusBar } from "@/components/EditorToolbar";
+import { EditorToolbar, EditorStatusBar, codeLangForExt } from "@/components/EditorToolbar";
 import { CodeEditor } from "@/components/CodeEditor";
-import type { Note, NoteActionItem } from "@/lib/crm";
-import { formatDate, uid } from "@/lib/crm";
+import type { Note, NoteActionItem, CodeFile } from "@/lib/crm";
+import { formatDate, uid, parseCodeFiles, serializeCodeFiles } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
 
 const DRAFT_KEY = "zapnote:draft";
@@ -32,6 +33,8 @@ type NoteDraft = {
   content: string;
   kind?: "rich" | "code";
   language?: string;
+  codeFiles?: CodeFile[];
+  activeFile?: number;
 };
 
 function readDraft(key: string): NoteDraft | null {
@@ -71,7 +74,12 @@ function toHtmlBlocks(html: string): string {
 }
 
 function snippet(note: Note): string {
-  const text = note.kind === "code" ? note.content : toPlainText(note.content);
+  if (note.kind === "code") {
+    const files = parseCodeFiles(note.content);
+    const text = files && files.length ? files[0].content : note.content;
+    return text.length > 160 ? `${text.slice(0, 160)}…` : text;
+  }
+  const text = toPlainText(note.content);
   return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }
 
@@ -97,6 +105,7 @@ export function NotesView() {
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
+  const addFileRef = useRef<HTMLInputElement>(null);
 
   const draftKey = isGuest ? GUEST_DRAFT_KEY : DRAFT_KEY;
 
@@ -188,7 +197,7 @@ export function NotesView() {
     savedTimer.current = window.setTimeout(() => setDraftSaved(false), 1500);
   }
 
-  function updateDraft(patch: Partial<Pick<NoteDraft, "title" | "content">>) {
+  function updateDraft(patch: Partial<NoteDraft>) {
     setEditor((prev) => (prev ? { ...prev, ...patch } : prev));
     markSaved();
   }
@@ -215,20 +224,185 @@ export function NotesView() {
     announce("Opened in new note");
   }
 
-  function handleUploadCode(raw: string, language: string, title?: string) {
+  function handleUploadCode(raw: string, language: string, name?: string) {
+    // When we're already inside a code session, fold the uploaded file into
+    // the current note as an extra tab instead of spawning a new note.
+    if (editor?.kind === "code") {
+      addCodeFile(raw, language, name || "untitled.txt");
+      return;
+    }
     const now = new Date().toISOString();
     const newId = uid();
-    const finalTitle = title?.trim() || "Untitled note";
-    const newNote: Note = { id: newId, title: finalTitle, content: raw, kind: "code", language, createdAt: now, updatedAt: now };
+    const finalTitle = name?.trim() || "Untitled note";
+    const files: CodeFile[] = [{ name: name || "untitled.txt", language, content: raw }];
+    const newNote: Note = { id: newId, title: finalTitle, content: serializeCodeFiles(files), kind: "code", language, createdAt: now, updatedAt: now };
     addNote(newNote);
     clearDraft(draftKey);
-    setEditor({ id: newId, title: finalTitle, content: raw, kind: "code", language });
+    setEditor({ id: newId, title: finalTitle, content: serializeCodeFiles(files), kind: "code", language, codeFiles: files, activeFile: 0 });
     markSaved();
     announce("Opened in code editor");
   }
 
+  function addCodeFile(raw: string, language: string, name: string) {
+    setEditor((prev) => {
+      if (!prev) return prev;
+      const files = [...(prev.codeFiles ?? []), { name, language, content: raw }];
+      return { ...prev, codeFiles: files, activeFile: files.length - 1, content: serializeCodeFiles(files) };
+    });
+    markSaved();
+    announce("Added file to session");
+  }
+
+  function closeCodeFile(index: number) {
+    setEditor((prev) => {
+      if (!prev || !prev.codeFiles) return prev;
+      const files = prev.codeFiles.filter((_, i) => i !== index);
+      if (files.length === 0) {
+        return { ...prev, codeFiles: [], activeFile: 0, content: serializeCodeFiles([]) };
+      }
+      const active = prev.activeFile && prev.activeFile >= index ? Math.max(0, prev.activeFile - 1) : prev.activeFile ?? 0;
+      return { ...prev, codeFiles: files, activeFile: active, content: serializeCodeFiles(files) };
+    });
+    markSaved();
+  }
+
+  function switchCodeFile(index: number) {
+    setEditor((prev) => (prev ? { ...prev, activeFile: index } : prev));
+    markSaved();
+  }
+
+  function updateActiveCodeContent(value: string) {
+    setEditor((prev) => {
+      if (!prev || !prev.codeFiles) return prev;
+      const i = prev.activeFile ?? 0;
+      const files = prev.codeFiles.map((f, idx) => (idx === i ? { ...f, content: value } : f));
+      return { ...prev, codeFiles: files, content: serializeCodeFiles(files) };
+    });
+    markSaved();
+  }
+
   function openNote(note: Note) {
-    setEditor({ id: note.id, title: note.title, content: note.content, kind: note.kind, language: note.language });
+    if (note.kind === "code") {
+      const files = parseCodeFiles(note.content) ?? [];
+      setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
+      return;
+    }
+    setEditor({ id: note.id, title: note.title, content: note.content });
+  }
+
+  function handleAddFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? "");
+      const ext = file.name.split(".").pop();
+      addCodeFile(text, codeLangForExt(ext), file.name);
+    };
+    reader.readAsText(file);
+  }
+
+  function renderCodeEditor(showExplorer: boolean) {
+    const files =
+      editor?.codeFiles ??
+      (editor?.kind === "code" && editor.content ? parseCodeFiles(editor.content) ?? [] : []);
+    const active = editor?.activeFile ?? 0;
+    const current = files[active];
+
+    const titleBar = (
+      <div className="border-b border-(--crm-border) bg-white px-3 py-1.5">
+        <input
+          value={editor?.title ?? ""}
+          onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })}
+          placeholder="Note title"
+          className="w-full border-0 bg-transparent text-sm font-semibold text-(--crm-fg) outline-none placeholder:text-(--crm-muted)"
+        />
+      </div>
+    );
+
+    const tabBar = (
+      <div className="flex items-stretch gap-0 overflow-x-auto border-b border-(--crm-border) bg-(--crm-soft)">
+        {files.map((f, i) => (
+          <div
+            key={i}
+            className={`group flex shrink-0 items-center gap-1.5 border-r border-(--crm-border) ${i === active ? "bg-white text-(--crm-fg)" : "text-(--crm-secondary) hover:bg-white/60"}`}
+          >
+            <button onClick={() => switchCodeFile(i)} className="flex items-center gap-1.5 px-3 py-2 text-xs">
+              <FileCode size={13} className="shrink-0 text-violet-500" />
+              <span className="max-w-[160px] truncate">{f.name}</span>
+            </button>
+            {files.length > 1 && (
+              <button
+                onClick={() => closeCodeFile(i)}
+                className="mr-1.5 rounded p-0.5 text-(--crm-muted) opacity-0 hover:bg-(--crm-border) hover:text-red-500 group-hover:opacity-100"
+                aria-label="Close file"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          onClick={() => addFileRef.current?.click()}
+          className="flex shrink-0 items-center px-3 py-2 text-xs font-semibold text-(--crm-secondary) hover:bg-white/60"
+          title="Open file in this session"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    );
+
+    const editorArea = current ? (
+      <div className="min-h-0 flex-1">
+        <CodeEditor value={current.content} language={current.language || "plaintext"} onChange={updateActiveCodeContent} />
+      </div>
+    ) : (
+      <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-(--crm-muted)">
+        No files. Click + to open a code file.
+      </div>
+    );
+
+    if (showExplorer) {
+      return (
+        <div className="flex min-h-0 flex-1">
+          <aside className="hidden w-56 shrink-0 flex-col border-r border-(--crm-border) bg-(--crm-soft) sm:flex">
+            <div className="px-3 py-2 text-[0.7rem] font-semibold uppercase tracking-wide text-(--crm-muted)">Explorer</div>
+            <div className="flex-1 overflow-y-auto px-2">
+              {files.map((f, i) => (
+                <button
+                  key={i}
+                  onClick={() => switchCodeFile(i)}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs ${i === active ? "bg-white font-semibold text-(--crm-fg)" : "text-(--crm-secondary) hover:bg-white/60"}`}
+                >
+                  <FileCode size={13} className="shrink-0 text-violet-500" />
+                  <span className="truncate">{f.name}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => addFileRef.current?.click()}
+              className="m-2 flex items-center justify-center gap-1 rounded-md border border-(--crm-border) bg-white py-1.5 text-xs font-semibold text-(--crm-secondary) hover:bg-(--crm-soft)"
+            >
+              <Plus size={13} /> Add file
+            </button>
+          </aside>
+          <div className="flex min-h-0 flex-1 flex-col">
+            {titleBar}
+            {tabBar}
+            {editorArea}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-white">
+        {titleBar}
+        {tabBar}
+        {editorArea}
+      </div>
+    );
   }
 
   function openNew() {
@@ -540,16 +714,11 @@ export function NotesView() {
             onDownloadWord={() => void downloadWord()}
             announce={announce}
           />
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
-            <div className="flex-1 overflow-y-auto p-0 sm:p-6">
-              {editor.kind === "code" ? (
-                <div className="mx-auto flex h-full w-full max-w-[1100px] flex-col p-0 sm:p-3">
-                  <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
-                  <div className="min-h-0 flex-1">
-                    <CodeEditor value={editor.content} language={editor.language ?? "plaintext"} onChange={(v) => updateDraft({ content: v })} />
-                  </div>
-                </div>
-              ) : (
+          {editor.kind === "code" ? (
+            renderCodeEditor(true)
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
+              <div className="flex-1 overflow-y-auto p-0 sm:p-6">
                 <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
                   <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
                   <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
@@ -557,14 +726,15 @@ export function NotesView() {
                     <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.target as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
                   </div>
                 </div>
-                )}
+              </div>
             </div>
-            <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
-          </div>
+          )}
+          <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
 
           {/* Toast */}
           {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
           {toast && <div className="fixed bottom-20 left-1/2 z-[90] -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-3 text-xs font-semibold text-white shadow-xl md:bottom-5">{toast}</div>}
+        <input ref={addFileRef} type="file" accept=".txt,.md,.json,.html,.htm,.css,.js,.jsx,.ts,.tsx,.py,.php,.xml,.svg,.csv,.log,.sh,.rb,.go,.java,.c,.cpp,.h" className="hidden" onChange={handleAddFile} />
         </div>
       );
     }
@@ -613,16 +783,11 @@ export function NotesView() {
             onDownloadWord={() => void downloadWord()}
             announce={announce}
           />
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
-              {editor.kind === "code" ? (
-                <div className="mx-auto flex h-full w-full max-w-[1100px] flex-col p-0 sm:p-3">
-                  <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
-                  <div className="min-h-0 flex-1">
-                    <CodeEditor value={editor.content} language={editor.language ?? "plaintext"} onChange={(v) => updateDraft({ content: v })} />
-                  </div>
-                </div>
-              ) : (
+          {editor.kind === "code" ? (
+            renderCodeEditor(false)
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
                 <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
                   <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
                   <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
@@ -669,9 +834,9 @@ export function NotesView() {
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )}
           <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
         </div>
 
@@ -684,6 +849,7 @@ export function NotesView() {
         )}
         {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
         {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
+        <input ref={addFileRef} type="file" accept=".txt,.md,.json,.html,.htm,.css,.js,.jsx,.ts,.tsx,.py,.php,.xml,.svg,.csv,.log,.sh,.rb,.go,.java,.c,.cpp,.h" className="hidden" onChange={handleAddFile} />
       </NotesShell>
     );
   }

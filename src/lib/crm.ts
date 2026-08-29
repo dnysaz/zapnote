@@ -34,6 +34,37 @@ export type Note = {
   updatedAt: string;
 };
 
+export type CodeFile = {
+  name: string;
+  language: string;
+  content: string;
+};
+
+// A code note stores its files as a JSON array inside `content`.
+export function parseCodeFiles(content: string): CodeFile[] | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      parsed.every(
+        (f) =>
+          f &&
+          typeof f.name === "string" &&
+          typeof f.language === "string" &&
+          typeof f.content === "string",
+      )
+    ) {
+      return parsed as CodeFile[];
+    }
+  } catch {}
+  return null;
+}
+
+export function serializeCodeFiles(files: CodeFile[]): string {
+  return JSON.stringify(files);
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",

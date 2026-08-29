@@ -61,6 +61,18 @@ export type EditorToolbarProps = {
   onUploadCode?: (raw: string, language: string, title?: string) => void;
 };
 
+export const CODE_EXT_LANG: Record<string, string> = {
+  html: "html", htm: "html", css: "css", js: "javascript", jsx: "javascript",
+  ts: "typescript", tsx: "typescript", py: "python", php: "php", xml: "xml",
+  svg: "xml", csv: "plaintext", log: "plaintext", sh: "shell", rb: "ruby",
+  go: "go", java: "java", c: "c", cpp: "cpp", h: "c", json: "json",
+};
+
+export function codeLangForExt(ext?: string): string {
+  if (!ext) return "plaintext";
+  return CODE_EXT_LANG[ext.toLowerCase()] ?? "plaintext";
+}
+
 const FONTS = [
   { label: "DM Sans", value: `"DM Sans", system-ui, sans-serif` },
   { label: "Inter", value: `Inter, system-ui, sans-serif` },
@@ -128,12 +140,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop()?.toLowerCase();
-    const codeMap: Record<string, string> = {
-      html: "html", htm: "html", css: "css", js: "javascript", jsx: "javascript",
-      ts: "typescript", tsx: "typescript", py: "python", php: "php", xml: "xml",
-      svg: "xml", csv: "plaintext", log: "plaintext", sh: "shell", rb: "ruby",
-      go: "go", java: "java", c: "c", cpp: "cpp", h: "c", json: "json",
-    };
+    const codeMap: Record<string, string> = CODE_EXT_LANG;
     try {
       if (ext === "txt" || ext === "md") {
         const text = await file.text();
@@ -157,7 +164,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
         props.announce(`Imported ${file.name}`);
       } else if (ext && ext in codeMap) {
         const text = await file.text();
-        props.onUploadCode?.(text, codeMap[ext], file.name.replace(/\.[^.]+$/, ""));
+        props.onUploadCode?.(text, codeMap[ext], file.name);
         props.announce(`Opened ${file.name}`);
       } else {
         props.announce("Unsupported format — use .txt, .md, .docx, .html, .css, .js, .ts, .py, .php, .xml, .json, …");
