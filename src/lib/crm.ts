@@ -115,6 +115,8 @@ export function normalizeNote(raw: unknown): Note {
     id: String(n.id ?? uid()),
     title: typeof n.title === "string" ? n.title : "",
     content: typeof n.content === "string" ? n.content : "",
+    kind: (n.kind === "rich" || n.kind === "code" || n.kind === "folder") ? n.kind : undefined,
+    language: typeof n.language === "string" ? n.language : undefined,
     tags,
     actionItems,
     createdAt: typeof n.createdAt === "string" ? n.createdAt : new Date().toISOString(),

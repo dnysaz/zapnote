@@ -11,7 +11,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const body = (await request.json()) as Note;
   const tags = JSON.stringify(Array.isArray(body.tags) ? body.tags : []);
   const actionItems = JSON.stringify(Array.isArray(body.actionItems) ? body.actionItems : []);
-  const kind = body.kind === "code" ? "code" : "rich";
+  const kind = body.kind === "code" ? "code" : body.kind === "folder" ? "folder" : "rich";
   const language = typeof body.language === "string" && body.language ? body.language : null;
   try {
     await sql`UPDATE notes SET title = ${body.title}, content = ${body.content}, updated_at = ${body.updatedAt}, tags = ${tags}::jsonb, action_items = ${actionItems}::jsonb, kind = ${kind}, language = ${language} WHERE id = ${id}`;

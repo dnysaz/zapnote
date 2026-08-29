@@ -47,7 +47,7 @@ export function rowToNote(row: NoteRow): Note {
     id: row.id,
     title: row.title,
     content: row.content,
-    kind: row.kind === "code" ? "code" : "rich",
+    kind: row.kind === "code" ? "code" : row.kind === "folder" ? "folder" : "rich",
     language: row.language ?? undefined,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
