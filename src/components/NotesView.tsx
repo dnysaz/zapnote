@@ -24,6 +24,8 @@ import { markdownToHtml } from "@/lib/markdown";
 
 const DRAFT_KEY = "zapnote:draft";
 const GUEST_DRAFT_KEY = "zapnote:draft:guest";
+const CODE_DRAFT_KEY = "zapnote:draft:code";
+const GUEST_CODE_DRAFT_KEY = "zapnote:draft:code:guest";
 const FS_KEY = "zapnote:fullscreen";
 
 type NoteDraft = {
@@ -105,7 +107,9 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const draftKey = isGuest ? GUEST_DRAFT_KEY : DRAFT_KEY;
+  const draftKey = isGuest
+    ? (isCodeMode ? GUEST_CODE_DRAFT_KEY : GUEST_DRAFT_KEY)
+    : (isCodeMode ? CODE_DRAFT_KEY : DRAFT_KEY);
 
   // Resume a non-empty draft after refresh / navigation.
   useEffect(() => {
