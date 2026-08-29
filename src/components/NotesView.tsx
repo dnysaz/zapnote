@@ -137,8 +137,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const [toast, setToast] = useState("");
   const [search, setSearch] = useState("");
   const [newCodeOpen, setNewCodeOpen] = useState(false);
-  const [newCodeName, setNewCodeName] = useState("untitled.txt");
-  const [newCodeMode, setNewCodeMode] = useState<"note" | "file">("note");
+  const [newCodeName, setNewCodeName] = useState("");
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -339,7 +338,6 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   function openNew() {
     if (isCodeMode) {
       setNewCodeName("");
-      setNewCodeMode("note");
       setNewCodeOpen(true);
       return;
     }
@@ -347,31 +345,17 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   }
 
   function createCodeFile() {
+    // Simpan dulu note yang sedang diedit agar tidak ada yang hilang.
+    persistEditor();
     const name = newCodeName.trim() || "untitled";
     const ext = name.includes(".") ? name.split(".").pop()! : "";
     const language = codeLangForExt(ext);
-    if (newCodeMode === "file") {
-      const prev = editor;
-      if (prev) {
-        const files = prev.codeFiles ?? parseCodeFiles(prev.content) ?? [];
-        const next = [...files, { name, language, content: "" }];
-        const content = serializeCodeFiles(next);
-        setEditor({ ...prev, codeFiles: next, activeFile: next.length - 1, content });
-        if (prev.id) {
-          const existing = notes.find((n) => n.id === prev.id);
-          if (existing) {
-            updateNote({ ...existing, title: prev.title, content, kind: "code", language: prev.language, updatedAt: new Date().toISOString() });
-          }
-        }
-      }
-    } else {
-      const now = new Date().toISOString();
-      const id = uid();
-      const seed: CodeFile[] = [{ name, language, content: "" }];
-      const content = serializeCodeFiles(seed);
-      addNote({ id, title: name, content, kind: "code", language, createdAt: now, updatedAt: now });
-      setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
-    }
+    const now = new Date().toISOString();
+    const id = uid();
+    const seed: CodeFile[] = [{ name, language, content: "" }];
+    const content = serializeCodeFiles(seed);
+    addNote({ id, title: name, content, kind: "code", language, createdAt: now, updatedAt: now });
+    setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
     setNewCodeOpen(false);
   }
 
@@ -702,7 +686,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
-              onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
+              onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
               onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
@@ -786,7 +770,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
               onRenameFile={renameCodeFile}
-              onAddFile={() => { setNewCodeName(""); setNewCodeMode("file"); setNewCodeOpen(true); }}
+              onAddFile={() => { setNewCodeName(""); setNewCodeOpen(true); }}
               onBack={() => { persistEditor(); setEditor(null); clearDraft(draftKey); }}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
