@@ -104,8 +104,6 @@ export function NotesView() {
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const addFileRef = useRef<HTMLInputElement>(null);
-
   const draftKey = isGuest ? GUEST_DRAFT_KEY : DRAFT_KEY;
 
   // Resume a non-empty draft after refresh / navigation.
@@ -261,14 +259,22 @@ export function NotesView() {
     announce("Switched to note editor");
   }
 
-  function addCodeFile(raw: string, language: string, name: string) {
+  function addBlankCodeFile() {
     setEditor((prev) => {
       if (!prev) return prev;
-      const files = [...(prev.codeFiles ?? []), { name, language, content: raw }];
-      return { ...prev, codeFiles: files, activeFile: files.length - 1, content: serializeCodeFiles(files) };
+      const files = prev.codeFiles ?? parseCodeFiles(prev.content) ?? [];
+      const exists = (nm: string) => files.some((f) => f.name === nm);
+      let name = "untitled.txt";
+      if (exists(name)) {
+        let i = 1;
+        while (exists(`untitled-${i}.txt`)) i++;
+        name = `untitled-${i}.txt`;
+      }
+      const next = [...files, { name, language: "plaintext", content: "" }];
+      return { ...prev, codeFiles: next, activeFile: next.length - 1, content: serializeCodeFiles(next) };
     });
     markSaved();
-    announce("Added file to session");
+    announce("New file created");
   }
 
   function closeCodeFile(index: number) {
@@ -306,19 +312,6 @@ export function NotesView() {
       return;
     }
     setEditor({ id: note.id, title: note.title, content: note.content });
-  }
-
-  function handleAddFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = String(reader.result ?? "");
-      const ext = file.name.split(".").pop();
-      addCodeFile(text, codeLangForExt(ext), file.name);
-    };
-    reader.readAsText(file);
   }
 
   function codeFilesForView(): CodeFile[] {
@@ -613,14 +606,12 @@ export function NotesView() {
         <div className="fixed inset-0 z-[80] flex flex-col bg-[#1e1e1e]">
           {editor.kind === "code" ? (
             <CodeWorkspace
-              title={editor.title}
-              onTitleChange={(t) => updateDraft({ title: t })}
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
               onChange={updateActiveCodeContent}
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
-              onAddFile={() => addFileRef.current?.click()}
+              onAddFile={addBlankCodeFile}
               onSwitchToNote={switchToNoteEditor}
               onFullscreen={() => setFullscreen(false)}
               onShare={handleShare}
@@ -675,7 +666,6 @@ export function NotesView() {
           {/* Toast */}
           {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
           {toast && <div className="fixed bottom-20 left-1/2 z-[90] -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-3 text-xs font-semibold text-white shadow-xl md:bottom-5">{toast}</div>}
-        <input ref={addFileRef} type="file" accept=".txt,.md,.json,.html,.htm,.css,.js,.jsx,.ts,.tsx,.py,.php,.xml,.svg,.csv,.log,.sh,.rb,.go,.java,.c,.cpp,.h" className="hidden" onChange={handleAddFile} />
         </div>
       );
     }
@@ -700,14 +690,12 @@ export function NotesView() {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
           {editor.kind === "code" ? (
             <CodeWorkspace
-              title={editor.title}
-              onTitleChange={(t) => updateDraft({ title: t })}
               files={codeFilesForView()}
               activeFile={editor.activeFile ?? 0}
               onChange={updateActiveCodeContent}
               onSwitchFile={switchCodeFile}
               onCloseFile={closeCodeFile}
-              onAddFile={() => addFileRef.current?.click()}
+              onAddFile={addBlankCodeFile}
               onSwitchToNote={switchToNoteEditor}
               onFullscreen={() => setFullscreen(true)}
               onShare={handleShare}
@@ -806,7 +794,6 @@ export function NotesView() {
         )}
         {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
         {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
-        <input ref={addFileRef} type="file" accept=".txt,.md,.json,.html,.htm,.css,.js,.jsx,.ts,.tsx,.py,.php,.xml,.svg,.csv,.log,.sh,.rb,.go,.java,.c,.cpp,.h" className="hidden" onChange={handleAddFile} />
       </NotesShell>
     );
   }

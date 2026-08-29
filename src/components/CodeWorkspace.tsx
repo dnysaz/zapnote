@@ -29,8 +29,6 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((m) => m.
 });
 
 type CodeWorkspaceProps = {
-  title: string;
-  onTitleChange: (title: string) => void;
   files: CodeFile[];
   activeFile: number;
   onChange: (value: string) => void;
@@ -50,8 +48,6 @@ type CodeWorkspaceProps = {
 // tabs, editor area and status bar) on a dark #1e1e1e theme.
 export function CodeWorkspace(props: CodeWorkspaceProps) {
   const {
-    title,
-    onTitleChange,
     files,
     activeFile,
     onChange,
@@ -75,12 +71,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
       <div className="flex h-9 shrink-0 items-center justify-between bg-[#3c3c3c] px-2 text-xs text-[#cccccc]">
         <div className="flex min-w-0 items-center gap-2">
           <Code2 size={14} className="shrink-0 text-[#4ec9b0]" />
-          <input
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="Untitled"
-            className="min-w-0 max-w-[55%] truncate border-0 bg-transparent text-xs text-[#cccccc] outline-none placeholder:text-[#858585]"
-          />
+          <span className="select-none font-semibold tracking-wide text-[#cccccc]">ZapNote</span>
         </div>
         <div className="flex items-center gap-0.5">
           <button
@@ -139,7 +130,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
               Explorer
             </div>
             <div className="px-3 pb-2 text-[0.7rem] uppercase tracking-wide text-[#bbbbbb]">
-              {title || "notes"}
+              Notes
             </div>
             <div className="flex-1 overflow-y-auto px-2">
               {files.map((f, i) => (
