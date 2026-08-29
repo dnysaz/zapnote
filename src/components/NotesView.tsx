@@ -461,7 +461,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     const id = uid();
     const seed: CodeFile[] = [{ name, language, content: "" }];
     const content = serializeCodeFiles(seed);
-    addNote({ id, title: name, content, kind: "code", language, createdAt: now, updatedAt: now });
+    addNote({ id, title: name, content, kind: "code", language, tags: tagsWithParent([], currentFolderId), createdAt: now, updatedAt: now });
     setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
     setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
     setNewCodeOpen(false);
@@ -485,6 +485,31 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
 
   function openFolder(folderId: string | null) {
     setCurrentFolderId(folderId);
+  }
+
+  function handleDeleteItem(noteId: string, title: string, isFolder: boolean) {
+    if (isFolder) {
+      const childCount = notes.filter((n) => parentIdOf(n) === noteId).length;
+      if (childCount === 0) {
+        deleteNote(noteId);
+        announce("Folder deleted");
+      } else {
+        setConfirmDelete({ id: noteId, title });
+      }
+    } else {
+      deleteNote(noteId);
+      setOpenTabs((prev) => prev.filter((tid) => tid !== noteId));
+      if (editor?.id === noteId) {
+        const remaining = openTabs.filter((tid) => tid !== noteId);
+        if (remaining.length === 0) { setEditor(null); clearDraft(draftKey); }
+        else {
+          const last = remaining[remaining.length - 1];
+          const n = notes.find((x) => x.id === last);
+          if (n) { const files = parseCodeFiles(n.content) ?? []; setEditor({ id: n.id, title: n.title, content: n.content, kind: "code", language: n.language, codeFiles: files, activeFile: 0 }); }
+        }
+      }
+      announce("File deleted");
+    }
   }
 
   function deleteNoteWithChildren(noteId: string) {
@@ -824,22 +849,23 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     setEditor(null);
   }
 
-  const confirmModal = confirmDelete && (
-    <ConfirmModal
-      title={`Delete "${confirmDelete.title || "Untitled note"}"?`}
-      message="This action cannot be undone."
-      onClose={() => setConfirmDelete(null)}
-      onConfirm={() => {
-        deleteNote(confirmDelete.id);
-        if (editor?.id === confirmDelete.id) {
-          clearDraft(draftKey);
-          setEditor(null);
-        }
-        announce("Note deleted");
-        setConfirmDelete(null);
-      }}
-    />
-  );
+  const confirmModal = confirmDelete && (() => {
+    const target = notes.find((n) => n.id === confirmDelete.id);
+    const isFolder = target ? isFolderNote(target) : false;
+    const childCount = isFolder ? notes.filter((n) => parentIdOf(n) === confirmDelete.id).length : 0;
+    return (
+      <ConfirmModal
+        title={isFolder ? `Delete folder "${confirmDelete.title || "Untitled"}"?` : `Delete "${confirmDelete.title || "Untitled note"}"?`}
+        message={isFolder && childCount > 0 ? `This folder contains ${childCount} item${childCount > 1 ? "s" : ""}. They will be moved to the parent folder. This action cannot be undone.` : "This action cannot be undone."}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          deleteNoteWithChildren(confirmDelete.id);
+          announce(isFolder ? "Folder deleted" : "Note deleted");
+          setConfirmDelete(null);
+        }}
+      />
+    );
+  })();
 
   const newCodeModal = newCodeOpen ? (
     <div
@@ -937,25 +963,39 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     </div>
   ) : null;
 
-  // Explorer + tabs for the code workspace: folder-aware listing.
-  const codeExplorer: ExplorerItem[] = notes
-    .filter((n) => {
-      if (isFolderNote(n)) return parentIdOf(n) === (currentFolderId ?? null);
-      return n.kind === "code" && parentIdOf(n) === (currentFolderId ?? null);
-    })
-    .sort((a, b) => {
-      const af = isFolderNote(a) ? 0 : 1;
-      const bf = isFolderNote(b) ? 0 : 1;
-      if (af !== bf) return af - bf;
-      return a.title.localeCompare(b.title);
-    })
-    .map((n) => {
-      if (isFolderNote(n)) {
-        return { noteId: n.id, name: n.title || "Untitled", language: "folder" };
-      }
-      const f = parseCodeFiles(n.content)?.[0];
-      return { noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? n.language ?? "plaintext" };
-    });
+  // Explorer + tabs for the code workspace: full hierarchy from root.
+  const codeExplorer: ExplorerItem[] = (() => {
+    const items: ExplorerItem[] = [];
+    const addFolder = (parentId: string | null, depth: number) => {
+      notes
+        .filter((n) => isFolderNote(n) && parentIdOf(n) === parentId)
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .forEach((folder) => {
+          const indent = "  ".repeat(depth);
+          items.push({ noteId: folder.id, name: `${indent}${folder.title || "Untitled"}`, language: "folder" });
+          // Add files inside this folder
+          notes
+            .filter((n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === folder.id)
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .forEach((n) => {
+              const f = parseCodeFiles(n.content)?.[0];
+              items.push({ noteId: n.id, name: `${indent}  ${f?.name ?? n.title ?? "untitled"}`, language: f?.language ?? n.language ?? "plaintext" });
+            });
+          addFolder(folder.id, depth + 1);
+        });
+    };
+    // Root files first
+    notes
+      .filter((n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === null)
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .forEach((n) => {
+        const f = parseCodeFiles(n.content)?.[0];
+        items.push({ noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? n.language ?? "plaintext" });
+      });
+    // Then folders and their contents recursively
+    addFolder(null, 0);
+    return items;
+  })();
   const openTabItems: OpenTabItem[] = openTabs
     .map((id) => codeExplorer.find((e) => e.noteId === id))
     .filter((x): x is ExplorerItem => Boolean(x));
@@ -1331,7 +1371,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
                           Copy
                         </button>
                         <button
-                          onClick={() => deleteNoteWithChildren(note.id)}
+                          onClick={() => handleDeleteItem(note.id, note.title || "Untitled", isFolder)}
                           className="rounded-md p-1.5 text-(--crm-muted) hover:bg-(--crm-danger-bg) hover:text-(--crm-danger)"
                           aria-label="Delete"
                         >
