@@ -66,8 +66,11 @@ export function CodeExplorer() {
   const [navHistory, setNavHistory] = useState<(string | null)[]>([null]);
   const [navIndex, setNavIndex] = useState(0);
 
-  // View
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  // View - persist to localStorage
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    if (typeof window === "undefined") return "list";
+    return (localStorage.getItem("zapnote:code-view") as "grid" | "list") || "list";
+  });
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -83,6 +86,11 @@ export function CodeExplorer() {
   const savedTimer = useRef<number | null>(null);
 
   useEffect(() => () => { if (savedTimer.current) window.clearTimeout(savedTimer.current); }, []);
+
+  function persistView(mode: "grid" | "list") {
+    setViewMode(mode);
+    localStorage.setItem("zapnote:code-view", mode);
+  }
 
   function announce(msg: string) {
     setToast(msg);
@@ -382,8 +390,8 @@ export function CodeExplorer() {
               <Search size={14} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" className="h-7 w-40 rounded-md border border-(--crm-border-input) bg-(--crm-panel) pl-7 pr-2 text-xs text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:w-52" />
             </div>
-            <button onClick={() => setViewMode("list")} title="List view" className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-(--crm-active) text-white" : "text-(--crm-muted) hover:bg-(--crm-hover) hover:text-(--crm-fg)"}`}><List size={15} /></button>
-            <button onClick={() => setViewMode("grid")} title="Grid view" className={`rounded-md p-1.5 transition-colors ${viewMode === "grid" ? "bg-(--crm-active) text-white" : "text-(--crm-muted) hover:bg-(--crm-hover) hover:text-(--crm-fg)"}`}><Grid3X3 size={15} /></button>
+            <button onClick={() => persistView("list")} title="List view" className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-(--crm-active) text-white" : "text-(--crm-muted) hover:bg-(--crm-hover) hover:text-(--crm-fg)"}`}><List size={15} /></button>
+            <button onClick={() => persistView("grid")} title="Grid view" className={`rounded-md p-1.5 transition-colors ${viewMode === "grid" ? "bg-(--crm-active) text-white" : "text-(--crm-muted) hover:bg-(--crm-hover) hover:text-(--crm-fg)"}`}><Grid3X3 size={15} /></button>
             {hasSelection && (
               <>
                 <div className="mx-1 h-5 w-px bg-(--crm-border)" />
@@ -516,23 +524,23 @@ export function CodeExplorer() {
                         toggleSelect(note.id, e.ctrlKey || e.metaKey);
                       }
                     }}
-                    className={`group relative flex cursor-pointer flex-col items-center p-3 text-center transition-colors ${
+                    className={`group relative flex cursor-pointer flex-col items-center rounded-lg p-3 text-center transition-colors ${
                       isSelected ? "bg-blue-50" : "hover:bg-gray-100"
                     }`}
                   >
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(note.id, note.title || "Untitled", isFolder); }} className="absolute right-1.5 top-1.5 rounded p-1 text-gray-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100" aria-label="Delete"><Trash2 size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(note.id, note.title || "Untitled", isFolder); }} className="absolute right-1 top-1 rounded p-1 text-gray-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100" aria-label="Delete"><Trash2 size={11} /></button>
                     {isFolder ? (
                       <>
-                        <Folder size={48} className="text-amber-400" />
-                        <p className="mt-1.5 line-clamp-2 w-full text-[0.75rem] font-medium text-gray-700">{note.title || "Untitled"}</p>
+                        <Folder size={48} className="text-amber-400" strokeWidth={1.5} />
+                        <p className="mt-1.5 line-clamp-2 w-full text-[0.72rem] font-medium text-gray-700">{note.title || "Untitled"}</p>
                       </>
                     ) : (
                       <>
                         <div className="relative">
-                          <FileCode size={48} className="text-gray-400" strokeWidth={1} />
-                          <span className="absolute inset-0 flex items-center justify-center text-[0.7rem] font-bold text-gray-600">{meta!.label.replace(".", "")}</span>
+                          <FileCode size={48} className="text-gray-300" strokeWidth={1} />
+                          <span className="absolute inset-0 flex items-center justify-center text-[0.65rem] font-bold text-gray-500">{meta!.label.replace(".", "")}</span>
                         </div>
-                        <p className="mt-1.5 line-clamp-2 w-full text-[0.75rem] font-medium text-gray-700">{note.title || "Untitled"}</p>
+                        <p className="mt-1.5 line-clamp-2 w-full text-[0.72rem] font-medium text-gray-700">{note.title || "Untitled"}</p>
                       </>
                     )}
                   </div>
