@@ -125,13 +125,13 @@ function EditorInner({ init }: { init: EditorInit }) {
         .sort((a, b) => a.title.localeCompare(b.title))
         .forEach((folder) => {
           const indent = "  ".repeat(depth);
-          items.push({ noteId: folder.id, name: `${indent}${folder.title || "Untitled"}`, language: "folder" });
+          items.push({ noteId: folder.id, name: `${indent}${folder.title || "Untitled"}`, language: "folder", parentId });
           notes
             .filter((n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === folder.id)
             .sort((a, b) => a.title.localeCompare(b.title))
             .forEach((n) => {
               const f = parseCodeFiles(n.content)?.[0];
-              items.push({ noteId: n.id, name: `${indent}  ${f?.name ?? n.title ?? "untitled"}`, language: f?.language ?? "plaintext" });
+              items.push({ noteId: n.id, name: `${indent}  ${f?.name ?? n.title ?? "untitled"}`, language: f?.language ?? "plaintext", parentId: folder.id });
             });
           buildFolder(folder.id, depth + 1);
         });
@@ -141,7 +141,7 @@ function EditorInner({ init }: { init: EditorInit }) {
       .sort((a, b) => a.title.localeCompare(b.title))
       .forEach((n) => {
         const f = parseCodeFiles(n.content)?.[0];
-        items.push({ noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? "plaintext" });
+        items.push({ noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? "plaintext", parentId: null });
       });
     buildFolder(null, 0);
     return items;

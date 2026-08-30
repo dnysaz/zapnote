@@ -33,7 +33,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((m) => m.
   ),
 });
 
-export type ExplorerItem = { noteId: string; name: string; language: string };
+export type ExplorerItem = { noteId: string; name: string; language: string; parentId: string | null };
 export type OpenTabItem = { noteId: string; name: string; language: string };
 
 type TreeNode = {
@@ -245,8 +245,10 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     if (!name) { setEditingId(null); return; }
     const item = explorerItems.find((e) => e.noteId === noteId);
     const type = item?.language === "folder" ? "folder" : "file";
+    const parentOfItem = item?.parentId ?? null;
     const hasDuplicate = explorerItems.some((e) => {
       if (e.noteId === noteId) return false;
+      if (e.parentId !== parentOfItem) return false;
       const isItemFolder = e.language === "folder";
       const eName = e.name.trim();
       if (eName.toLowerCase() !== name.toLowerCase()) return false;
@@ -260,7 +262,9 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
   };
 
   function checkDuplicate(name: string, type: "file" | "folder"): boolean {
+    const parentId = creatingItem?.parentId ?? null;
     return explorerItems.some((item) => {
+      if (item.parentId !== parentId) return false;
       const isItemFolder = item.language === "folder";
       const itemName = item.name.trim();
       if (itemName.toLowerCase() !== name.toLowerCase()) return false;
