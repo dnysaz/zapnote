@@ -119,7 +119,14 @@ function EditorInner({ init }: { init: EditorInit }) {
 
   const explorerItems: ExplorerItem[] = useMemo(() => {
     const items: ExplorerItem[] = [];
-    const rootId = init?.mode === "folder" ? (init.folderId || null) : null;
+
+    let rootId: string | null = null;
+    if (init?.mode === "folder" && init.folderId) {
+      rootId = init.folderId;
+    } else if (init?.mode === "file" && init.noteId) {
+      const fileNote = notes.find((n) => n.id === init.noteId);
+      if (fileNote) rootId = parentIdOf(fileNote);
+    }
 
     const buildFolder = (parentId: string | null, depth: number) => {
       notes
