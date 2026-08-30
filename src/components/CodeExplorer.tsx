@@ -185,6 +185,16 @@ export function CodeExplorer() {
     const name = creatingType === "folder"
       ? (rawName || "New Folder").replace(/\.[^.]+$/, "")
       : (rawName || "untitled");
+
+    const isDuplicate = items.some((item) => {
+      const itemTitle = item.title?.toLowerCase() ?? "";
+      return itemTitle === name.toLowerCase();
+    });
+    if (isDuplicate) {
+      announce(`A ${creatingType} with this name already exists`);
+      return;
+    }
+
     const now = new Date().toISOString();
     const id = uid();
 
