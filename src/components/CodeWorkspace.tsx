@@ -56,7 +56,9 @@ type CodeWorkspaceProps = {
   activeFile: number;
   onChange: (value: string) => void;
   onAddFile: () => void;
+  onAddFileInFolder?: (folderId: string) => void;
   onAddFolder?: () => void;
+  onAddFolderInFolder?: (folderId: string) => void;
   explorerItems: ExplorerItem[];
   openTabs: OpenTabItem[];
   activeNoteId: string | null | undefined;
@@ -87,7 +89,9 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     activeFile,
     onChange,
     onAddFile,
+    onAddFileInFolder,
     onAddFolder,
+    onAddFolderInFolder,
     explorerItems,
     openTabs,
     activeNoteId,
@@ -180,15 +184,23 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
 
   const current = files[activeFile];
 
-  const itemForNote = (noteId: string, name: string): MenuItem[] => [
-    { label: "Open", onClick: () => onSelectFile(noteId) },
-    { label: "Rename", onClick: () => { setEditingId(noteId); setEditValue(name); } },
-    { label: "Duplicate", onClick: () => onDuplicateNote(noteId) },
-    { label: "Delete", danger: true, onClick: () => onDeleteNote(noteId) },
-    { separator: true },
-    { label: "Copy Filename", onClick: () => navigator.clipboard?.writeText(name) },
-    { label: "Copy Relative Path", onClick: () => navigator.clipboard?.writeText(name) },
-  ];
+  const itemForNote = (noteId: string, name: string, isFolder: boolean): MenuItem[] => {
+    const items: MenuItem[] = [
+      { label: "Open", onClick: () => onSelectFile(noteId) },
+      { label: "Rename", onClick: () => { setEditingId(noteId); setEditValue(name); } },
+      { label: "Duplicate", onClick: () => onDuplicateNote(noteId) },
+      { label: "Delete", danger: true, onClick: () => onDeleteNote(noteId) },
+      { separator: true },
+      { label: "Copy Filename", onClick: () => navigator.clipboard?.writeText(name) },
+      { label: "Copy Relative Path", onClick: () => navigator.clipboard?.writeText(name) },
+    ];
+    if (isFolder) {
+      items.unshift({ separator: true });
+      items.unshift({ label: "New Folder", onClick: () => onAddFolderInFolder?.(noteId) });
+      items.unshift({ label: "New File", onClick: () => onAddFileInFolder?.(noteId) });
+    }
+    return items;
+  };
 
   const commands = [
     { id: "minimap", title: "View: Toggle Minimap", run: () => setSettings((s) => ({ ...s, minimap: !s.minimap })) },
@@ -355,7 +367,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                           }}
                           onContextMenu={(e) => {
                             e.preventDefault();
-                            setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(node.noteId, node.name) });
+                            setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(node.noteId, node.name, true) });
                           }}
                           onDoubleClick={() => { if (isActive) { setEditingId(node.noteId); setEditValue(node.name); } }}
                           title={isActive ? "Double-click to rename · right-click for menu" : "Open folder"}
@@ -410,7 +422,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                       }}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(node.noteId, node.name) });
+                        setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(node.noteId, node.name, false) });
                       }}
                       onDoubleClick={() => { if (isActive) { setEditingId(node.noteId); setEditValue(node.name); } }}
                       title={isActive ? "Double-click to rename · right-click for menu" : "Open file · right-click for menu"}
@@ -473,7 +485,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                   key={t.noteId}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(t.noteId, t.name) });
+                    setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(t.noteId, t.name, false) });
                   }}
                   className={`group flex items-center gap-2 border-r border-[#1e1e1e] pl-3 pr-1 text-xs ${
                     isActive ? "bg-[#1e1e1e] text-white" : "bg-[#2d2d2d] text-[#969696] hover:bg-[#252526]"

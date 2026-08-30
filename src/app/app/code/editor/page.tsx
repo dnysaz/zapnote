@@ -184,6 +184,22 @@ function EditorInner({ init }: { init: EditorInit }) {
     addNote({ id, title: name, content: "", kind: "folder", tags: folderTags(currentFolderId), createdAt: now, updatedAt: now });
   }
 
+  function handleAddFileInFolder(folderId: string) {
+    const name = "untitled";
+    const language = "plaintext";
+    const seed: CodeFile[] = [{ name, language, content: "" }];
+    const now = new Date().toISOString();
+    const id = uid();
+    addNote({ id, title: name, content: serializeCodeFiles(seed), kind: "code", language, tags: [`__zf_parent:${folderId}`], createdAt: now, updatedAt: now });
+  }
+
+  function handleAddFolderInFolder(folderId: string) {
+    const name = "New Folder";
+    const now = new Date().toISOString();
+    const id = uid();
+    addNote({ id, title: name, content: "", kind: "folder", tags: folderTags(folderId), createdAt: now, updatedAt: now });
+  }
+
   function handleRename(noteId: string, name: string) {
     const note = notes.find((n) => n.id === noteId);
     if (!note) return;
@@ -269,7 +285,9 @@ function EditorInner({ init }: { init: EditorInit }) {
       activeFile={activeFile}
       onChange={handleChange}
       onAddFile={handleAddFile}
+      onAddFileInFolder={handleAddFileInFolder}
       onAddFolder={handleAddFolder}
+      onAddFolderInFolder={handleAddFolderInFolder}
       explorerItems={explorerItems}
       openTabs={openTabs}
       activeNoteId={activeNoteId}
