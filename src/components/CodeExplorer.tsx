@@ -320,9 +320,9 @@ export function CodeExplorer() {
     const note = notes.find((n) => n.id === noteId);
     if (!note) return;
     if (isFolderNote(note)) {
-      sessionStorage.setItem("zapnote:open-file", JSON.stringify({ mode: "folder", folderId: noteId }));
+      localStorage.setItem("zapnote:code-editor-state", JSON.stringify({ mode: "folder", folderId: noteId }));
     } else {
-      sessionStorage.setItem("zapnote:open-file", JSON.stringify({ mode: "file", noteId }));
+      localStorage.setItem("zapnote:code-editor-state", JSON.stringify({ mode: "file", noteId }));
     }
     router.push("/app/code/editor");
   }

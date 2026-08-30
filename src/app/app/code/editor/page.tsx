@@ -23,13 +23,17 @@ type EditorInit = {
 function readInit(): EditorInit | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = sessionStorage.getItem("zapnote:open-file");
+    const raw = localStorage.getItem("zapnote:code-editor-state");
     if (raw) {
-      sessionStorage.removeItem("zapnote:open-file");
       return JSON.parse(raw) as EditorInit;
     }
   } catch {}
   return null;
+}
+
+function saveInit(init: EditorInit) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("zapnote:code-editor-state", JSON.stringify(init));
 }
 
 function loadFiles(notes: ReturnType<typeof useNotes>["notes"], init: EditorInit) {
@@ -37,9 +41,41 @@ function loadFiles(notes: ReturnType<typeof useNotes>["notes"], init: EditorInit
   let tabs: { noteId: string; name: string; language: string }[] = [];
   let folderId: string | null = null;
 
-  if (init.mode === "folder" && init.folderId) {
+  if (init.mode === "folder") {
+    if (!init.folderId) {
+      // Root folder
+      folderId = null;
+      const rootFiles = notes.filter(
+        (n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === null
+      );
+      rootFiles.forEach((note) => {
+        const parsed = parseCodeFiles(note.content);
+        if (parsed && parsed.length > 0) {
+          const f = parsed[0];
+          files.push(f);
+          tabs.push({ noteId: note.id, name: f.name, language: f.language });
+        }
+      });
+      return { files, tabs, folderId };
+    }
+
     const folder = notes.find((n) => n.id === init.folderId);
-    if (!folder) return { files, tabs, folderId };
+    if (!folder) {
+      // Folder not found, load root
+      folderId = null;
+      const rootFiles = notes.filter(
+        (n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === null
+      );
+      rootFiles.forEach((note) => {
+        const parsed = parseCodeFiles(note.content);
+        if (parsed && parsed.length > 0) {
+          const f = parsed[0];
+          files.push(f);
+          tabs.push({ noteId: note.id, name: f.name, language: f.language });
+        }
+      });
+      return { files, tabs, folderId };
+    }
     folderId = parentIdOf(folder);
 
     const children = notes.filter(
@@ -136,6 +172,7 @@ function EditorInner({ init }: { init: EditorInit }) {
     if (existingIdx >= 0) {
       setActiveFile(existingIdx);
       setActiveNoteId(noteId);
+      saveInit({ mode: "file", noteId });
       return;
     }
 
@@ -143,6 +180,7 @@ function EditorInner({ init }: { init: EditorInit }) {
     setOpenTabs((prev) => [...prev, { noteId, name: f.name, language: f.language }]);
     setActiveFile(files.length);
     setActiveNoteId(noteId);
+    saveInit({ mode: "file", noteId });
   }
 
   function handleCloseTab(noteId: string) {
@@ -269,12 +307,19 @@ function EditorInner({ init }: { init: EditorInit }) {
 
   function handleSelectFolder(folderId: string) {
     setCurrentFolderId(folderId);
+    saveInit({ mode: "folder", folderId });
   }
 
   function handleNavigateUp() {
     if (!currentFolderId) return;
     const current = notes.find((n) => n.id === currentFolderId);
-    setCurrentFolderId(current ? parentIdOf(current) : null);
+    const parentId = current ? parentIdOf(current) : null;
+    setCurrentFolderId(parentId);
+    if (parentId) {
+      saveInit({ mode: "folder", folderId: parentId });
+    } else {
+      saveInit({ mode: "folder", folderId: "" });
+    }
   }
 
   const currentFolderName = (() => {
