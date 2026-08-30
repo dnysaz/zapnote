@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronRight,
+  FileCode,
   Folder,
   FolderOpen,
   Grid3X3,
@@ -54,24 +55,6 @@ function formatSize(chars: number): string {
   if (chars < 1024) return `${chars} B`;
   if (chars < 1024 * 1024) return `${(chars / 1024).toFixed(1)} KB`;
   return `${(chars / 1024 / 1024).toFixed(1)} MB`;
-}
-
-const CODE_EXT_COLORS: Record<string, { bg: string; fg: string }> = {
-  php: { bg: "#777BB3", fg: "#fff" }, ts: { bg: "#3178C6", fg: "#fff" },
-  tsx: { bg: "#3178C6", fg: "#fff" }, js: { bg: "#F0DB4F", fg: "#323330" },
-  jsx: { bg: "#F0DB4F", fg: "#323330" }, py: { bg: "#3776AB", fg: "#fff" },
-  html: { bg: "#E34F26", fg: "#fff" }, css: { bg: "#1572B6", fg: "#fff" },
-  json: { bg: "#F2C200", fg: "#323330" }, java: { bg: "#E76F00", fg: "#fff" },
-  go: { bg: "#00ADD8", fg: "#0b2b30" }, rb: { bg: "#CC342D", fg: "#fff" },
-  c: { bg: "#00599C", fg: "#fff" }, cpp: { bg: "#00599C", fg: "#fff" },
-  rs: { bg: "#DEA584", fg: "#fff" }, sh: { bg: "#4EAA25", fg: "#fff" },
-  sql: { bg: "#E38C00", fg: "#fff" }, xml: { bg: "#8A9B0F", fg: "#fff" },
-  md: { bg: "#5B5B5B", fg: "#fff" }, yaml: { bg: "#CB171E", fg: "#fff" },
-  yml: { bg: "#CB171E", fg: "#fff" },
-};
-
-function extColor(ext: string) {
-  return CODE_EXT_COLORS[ext] ?? { bg: "#3C3C3C", fg: "#fff" };
 }
 
 export function CodeExplorer() {
@@ -327,18 +310,26 @@ export function CodeExplorer() {
   // --- Open file in editor (navigate to /code with editor) ---
   function openFileInEditor(noteId: string) {
     const note = notes.find((n) => n.id === noteId);
-    if (!note || isFolderNote(note)) return;
-    sessionStorage.setItem("zapnote:open-file", noteId);
+    if (!note) return;
+    if (isFolderNote(note)) {
+      sessionStorage.setItem("zapnote:open-file", JSON.stringify({ mode: "folder", folderId: noteId }));
+    } else {
+      sessionStorage.setItem("zapnote:open-file", JSON.stringify({ mode: "file", noteId }));
+    }
     router.push("/app/code/editor");
   }
 
+  function openSelectedInEditor() {
+    const first = notes.find((n) => selectedIds.has(n.id));
+    if (first) openFileInEditor(first.id);
+  }
+
   // --- Helpers ---
-  function fileMeta(note: Note): { label: string; bg: string; fg: string } {
+  function fileMeta(note: Note): { label: string } {
     const files = parseCodeFiles(note.content);
     const name = files?.[0]?.name ?? note.title ?? "";
     const ext = fileExt(name);
-    const color = extColor(ext);
-    return { label: ext ? `.${ext}` : "FILE", bg: color.bg, fg: color.fg };
+    return { label: ext ? `.${ext}` : "FILE" };
   }
 
   // --- Keyboard shortcuts ---
@@ -393,6 +384,14 @@ export function CodeExplorer() {
             </div>
             <button onClick={() => setViewMode("list")} title="List view" className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-(--crm-active) text-white" : "text-(--crm-muted) hover:bg-(--crm-hover) hover:text-(--crm-fg)"}`}><List size={15} /></button>
             <button onClick={() => setViewMode("grid")} title="Grid view" className={`rounded-md p-1.5 transition-colors ${viewMode === "grid" ? "bg-(--crm-active) text-white" : "text-(--crm-muted) hover:bg-(--crm-hover) hover:text-(--crm-fg)"}`}><Grid3X3 size={15} /></button>
+            {hasSelection && (
+              <>
+                <div className="mx-1 h-5 w-px bg-(--crm-border)" />
+                <button onClick={openSelectedInEditor} title="Open in Code Editor" className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-(--crm-brand) transition-colors hover:bg-(--crm-soft)">
+                  <span className="font-mono text-sm">&lt;/&gt;</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -472,7 +471,7 @@ export function CodeExplorer() {
                             {isFolder ? (
                               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-600"><Folder size={15} /></span>
                             ) : (
-                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[0.55rem] font-black" style={{ background: meta!.bg, color: meta!.fg }}>{meta!.label}</span>
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-500 text-[0.55rem] font-bold">{meta!.label.replace(".", "")}</span>
                             )}
                             <span className="font-medium text-(--crm-fg)">{note.title || "Untitled"}</span>
                           </div>
@@ -517,24 +516,23 @@ export function CodeExplorer() {
                         toggleSelect(note.id, e.ctrlKey || e.metaKey);
                       }
                     }}
-                    className={`group relative flex cursor-pointer flex-col items-center rounded-xl border p-3 text-center transition-all duration-150 ${
-                      isSelected
-                        ? "border-blue-400 bg-blue-50 shadow-sm"
-                        : "border-(--crm-border-soft) bg-white hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-md"
+                    className={`group relative flex cursor-pointer flex-col items-center p-3 text-center transition-colors ${
+                      isSelected ? "bg-blue-50" : "hover:bg-gray-100"
                     }`}
                   >
-                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(note.id, note.title || "Untitled", isFolder); }} className="absolute right-1.5 top-1.5 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100" aria-label="Delete"><Trash2 size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDeleteSingle(note.id, note.title || "Untitled", isFolder); }} className="absolute right-1.5 top-1.5 rounded p-1 text-gray-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100" aria-label="Delete"><Trash2 size={12} /></button>
                     {isFolder ? (
                       <>
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-50 text-amber-500"><Folder size={28} /></div>
-                        <p className="mt-2 line-clamp-2 w-full text-[0.8rem] font-medium text-(--crm-fg)">{note.title || "Untitled"}</p>
-                        <p className="text-[0.65rem] text-(--crm-muted)">Folder</p>
+                        <Folder size={48} className="text-amber-400" />
+                        <p className="mt-1.5 line-clamp-2 w-full text-[0.75rem] font-medium text-gray-700">{note.title || "Untitled"}</p>
                       </>
                     ) : (
                       <>
-                        <div className="flex h-14 w-14 items-center justify-center rounded-xl text-lg font-black" style={{ background: meta!.bg, color: meta!.fg }}>{meta!.label}</div>
-                        <p className="mt-2 line-clamp-2 w-full text-[0.8rem] font-medium text-(--crm-fg)">{note.title || "Untitled"}</p>
-                        <p className="text-[0.65rem] text-(--crm-muted)">{(parseCodeFiles(note.content)?.[0]?.language || "code").toUpperCase()}</p>
+                        <div className="relative">
+                          <FileCode size={48} className="text-gray-400" strokeWidth={1} />
+                          <span className="absolute inset-0 flex items-center justify-center text-[0.7rem] font-bold text-gray-600">{meta!.label.replace(".", "")}</span>
+                        </div>
+                        <p className="mt-1.5 line-clamp-2 w-full text-[0.75rem] font-medium text-gray-700">{note.title || "Untitled"}</p>
                       </>
                     )}
                   </div>
