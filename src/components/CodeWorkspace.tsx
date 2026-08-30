@@ -121,6 +121,9 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [creatingItem, setCreatingItem] = useState<{ parentId: string | null; type: "file" | "folder" } | null>(null);
+  const [creatingName, setCreatingName] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ noteId: string; name: string } | null>(null);
 
   // Build tree from flat explorer items (indented with spaces from NotesView)
   const tree = useMemo(() => {
@@ -189,15 +192,15 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
       { label: "Open", onClick: () => onSelectFile(noteId) },
       { label: "Rename", onClick: () => { setEditingId(noteId); setEditValue(name); } },
       { label: "Duplicate", onClick: () => onDuplicateNote(noteId) },
-      { label: "Delete", danger: true, onClick: () => onDeleteNote(noteId) },
+      { label: "Delete", danger: true, onClick: () => setDeleteConfirm({ noteId, name }) },
       { separator: true },
       { label: "Copy Filename", onClick: () => navigator.clipboard?.writeText(name) },
       { label: "Copy Relative Path", onClick: () => navigator.clipboard?.writeText(name) },
     ];
     if (isFolder) {
       items.unshift({ separator: true });
-      items.unshift({ label: "New Folder", onClick: () => onAddFolderInFolder?.(noteId) });
-      items.unshift({ label: "New File", onClick: () => onAddFileInFolder?.(noteId) });
+      items.unshift({ label: "New Folder", onClick: () => { setCreatingItem({ parentId: noteId, type: "folder" }); setCreatingName(""); } });
+      items.unshift({ label: "New File", onClick: () => { setCreatingItem({ parentId: noteId, type: "file" }); setCreatingName(""); } });
     }
     return items;
   };
@@ -240,6 +243,22 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     const name = raw.trim();
     if (name) onRenameNote(noteId, name);
     setEditingId(null);
+  };
+
+  const commitCreate = (raw: string) => {
+    if (!creatingItem) return;
+    const name = raw.trim();
+    if (name) {
+      if (creatingItem.type === "file") {
+        if (creatingItem.parentId) onAddFileInFolder?.(creatingItem.parentId);
+        else onAddFile();
+      } else {
+        if (creatingItem.parentId) onAddFolderInFolder?.(creatingItem.parentId);
+        else onAddFolder?.();
+      }
+    }
+    setCreatingItem(null);
+    setCreatingName("");
   };
 
   return (
@@ -345,7 +364,22 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
               Explorer
             </div>
             <div className="px-3 pb-2 text-[0.7rem] uppercase tracking-wide text-[#bbbbbb]">CODE</div>
-            <div className="flex-1 overflow-y-auto px-2">
+            <div
+              className="flex-1 overflow-y-auto px-2"
+              onContextMenu={(e) => {
+                if (e.target === e.currentTarget || (e.target as HTMLElement).closest(".flex-1.overflow-y-auto") === e.currentTarget) {
+                  e.preventDefault();
+                  setCtxMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    items: [
+                      { label: "New File", onClick: () => { setCreatingItem({ parentId: null, type: "file" }); setCreatingName(""); } },
+                      { label: "New Folder", onClick: () => { setCreatingItem({ parentId: null, type: "folder" }); setCreatingName(""); } },
+                    ],
+                  });
+                }
+              }}
+            >
               {tree.length === 0 && (
                 <div className="px-2 py-2 text-xs text-[#6c6c6c]">No files yet</div>
               )}
@@ -454,17 +488,38 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
 
                 return tree.map((node) => renderNode(node, 0));
               })()}
+              {creatingItem && (
+                <div className="flex items-center gap-1 py-1" style={{ paddingLeft: 8 }}>
+                  {creatingItem.type === "folder" ? (
+                    <Folder size={14} className="shrink-0 text-[#dcb67a]" />
+                  ) : (
+                    <FileCode size={14} className="shrink-0 text-[#4ec9b0]" />
+                  )}
+                  <input
+                    autoFocus
+                    value={creatingName}
+                    onChange={(e) => setCreatingName(e.target.value)}
+                    onBlur={() => commitCreate(creatingName)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitCreate(creatingName);
+                      else if (e.key === "Escape") { setCreatingItem(null); setCreatingName(""); }
+                    }}
+                    placeholder={creatingItem.type === "folder" ? "Folder name" : "File name"}
+                    className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
+                  />
+                </div>
+              )}
             </div>
             <div className="flex gap-1 m-2">
               <button
-                onClick={onAddFile}
+                onClick={() => { setCreatingItem({ parentId: null, type: "file" }); setCreatingName(""); }}
                 className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-[#3c3c3c] py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
               >
                 <Plus size={14} /> File
               </button>
               {onAddFolder && (
                 <button
-                  onClick={onAddFolder}
+                  onClick={() => { setCreatingItem({ parentId: null, type: "folder" }); setCreatingName(""); }}
                   className="flex flex-1 items-center justify-center gap-1 rounded-sm border border-[#3c3c3c] py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
                 >
                   <Folder size={14} className="text-[#dcb67a]" /> Folder
@@ -596,6 +651,20 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
             )}
           </div>
         </>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50" onClick={() => setDeleteConfirm(null)}>
+          <div className="w-[340px] rounded-lg bg-[#252526] p-4 text-[#cccccc] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-semibold">Delete &ldquo;{deleteConfirm.name}&rdquo;?</p>
+            <p className="mt-2 text-xs text-[#858585]">This action cannot be undone.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setDeleteConfirm(null)} className="rounded px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]">Cancel</button>
+              <button onClick={() => { onDeleteNote(deleteConfirm.noteId); setDeleteConfirm(null); }} className="rounded bg-[#d32f2f] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#b71c1c]">Delete</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Command palette */}
