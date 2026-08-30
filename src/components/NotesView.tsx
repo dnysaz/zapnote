@@ -18,7 +18,7 @@ import { NoteShareModal } from "@/components/NoteShareModal";
 import { NoteAiPanel } from "@/components/NoteAiPanel";
 import { EditorToolbar, EditorStatusBar } from "@/components/EditorToolbar";
 import type { Note, NoteActionItem } from "@/lib/crm";
-import { formatDate, uid } from "@/lib/crm";
+import { formatDate, uid, isFolderNote } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
 
 const DRAFT_KEY = "zapnote:draft";
@@ -148,7 +148,7 @@ export function NotesView() {
   }, [fullscreen]);
 
   const sortedNotes = useMemo(
-    () => [...notes].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+    () => [...notes].filter((n) => n.kind !== "code" && !isFolderNote(n)).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     [notes],
   );
 

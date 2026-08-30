@@ -147,7 +147,7 @@ export function CodeExplorer() {
 
   // --- Items in current folder ---
   const items = useMemo(() => {
-    const inFolder = notes.filter((n) => parentIdOf(n) === (currentFolderId ?? null));
+    const inFolder = notes.filter((n) => parentIdOf(n) === (currentFolderId ?? null) && (n.kind === "code" || n.kind === "folder"));
     const folders = inFolder.filter(isFolderNote).sort((a, b) => a.title.localeCompare(b.title));
     const files = inFolder.filter((n) => !isFolderNote(n)).sort((a, b) => a.title.localeCompare(b.title));
     return [...folders, ...files];

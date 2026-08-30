@@ -80,7 +80,7 @@ function loadFiles(notes: ReturnType<typeof useNotes>["notes"], init: EditorInit
     folderId = parentIdOf(folder);
 
     const children = notes.filter(
-      (n) => !isFolderNote(n) && parentIdOf(n) === init.folderId
+      (n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === init.folderId
     );
     children.forEach((note) => {
       const parsed = parseCodeFiles(note.content);
