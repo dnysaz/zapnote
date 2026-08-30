@@ -32,7 +32,6 @@ import {
   Indent,
   Outdent,
   ArrowLeft,
-  Code2,
 } from "lucide-react";
 
 export type EditorToolbarProps = {
@@ -57,10 +56,6 @@ export type EditorToolbarProps = {
   onDownloadPdf: () => void;
   onDownloadWord: () => void;
   announce: (msg: string) => void;
-  isCode?: boolean;
-  language?: string;
-  onSwitchToCode?: () => void;
-  onSwitchToNote?: () => void;
 };
 
 export const CODE_EXT_LANG: Record<string, string> = {
@@ -221,7 +216,6 @@ export function EditorToolbar(props: EditorToolbarProps) {
         </div>
         {/* Desktop-only line break so larger screens keep a two-row layout */}
         <span className="hidden w-px sm:block sm:h-5 sm:w-full" />
-        {!props.isCode && (<>
         <div className="flex shrink-0 items-center gap-1">
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "undo"); sync(); }} className={btn} title="Undo (Ctrl+Z)"><Undo2 size={15} /></button>
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "redo"); sync(); }} className={btn} title="Redo (Ctrl+Y)"><Redo2 size={15} /></button>
@@ -278,10 +272,6 @@ export function EditorToolbar(props: EditorToolbarProps) {
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "indent"); sync(); }} className={btn} title="Increase indent (Tab)"><Indent size={15} /></button>
           <button onMouseDown={(e) => e.preventDefault()} onClick={() => { exec(props.contentRef, "outdent"); sync(); }} className={btn} title="Decrease indent"><Outdent size={15} /></button>
         </div>
-        </>)}
-        {props.isCode && (
-          <span className="shrink-0 rounded-full bg-violet-100 px-2.5 py-1 text-[0.62rem] font-semibold text-violet-700">{props.language ?? "code"}</span>
-        )}
         <div className={sep} />
         <div className="flex shrink-0 items-center gap-1">
           {props.hasApiKey ? (
@@ -300,15 +290,6 @@ export function EditorToolbar(props: EditorToolbarProps) {
           )}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          {props.isCode ? (
-            <button onClick={props.onSwitchToNote} className={`${btn} text-violet-700`} title="Switch to note editor">
-              <FileText size={15} /> <span className="hidden sm:inline">Note editor</span>
-            </button>
-          ) : (
-            <button onClick={props.onSwitchToCode} className={`${btn} text-violet-700`} title="Switch to code editor">
-              <Code2 size={15} /> <span className="hidden sm:inline">Code editor</span>
-            </button>
-          )}
           {!props.isGuest && props.hasActiveNote && (
             <button onClick={props.onShare} className={btn} title="Share"><Link2 size={15} /></button>
           )}

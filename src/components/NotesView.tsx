@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Folder,
   Plus,
   Search,
   StickyNote,
@@ -17,26 +16,19 @@ import { useSettings } from "@/components/SettingsProvider";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { NoteShareModal } from "@/components/NoteShareModal";
 import { NoteAiPanel } from "@/components/NoteAiPanel";
-import { EditorToolbar, EditorStatusBar, codeLangForExt } from "@/components/EditorToolbar";
-import { CodeWorkspace, type ExplorerItem, type OpenTabItem } from "@/components/CodeWorkspace";
-import type { Note, NoteActionItem, CodeFile } from "@/lib/crm";
-import { formatDate, uid, parseCodeFiles, serializeCodeFiles, isFolderNote, parentIdOf, folderTags, tagsWithParent } from "@/lib/crm";
+import { EditorToolbar, EditorStatusBar } from "@/components/EditorToolbar";
+import type { Note, NoteActionItem } from "@/lib/crm";
+import { formatDate, uid } from "@/lib/crm";
 import { markdownToHtml } from "@/lib/markdown";
 
 const DRAFT_KEY = "zapnote:draft";
 const GUEST_DRAFT_KEY = "zapnote:draft:guest";
-const CODE_DRAFT_KEY = "zapnote:draft:code";
-const GUEST_CODE_DRAFT_KEY = "zapnote:draft:code:guest";
 const FS_KEY = "zapnote:fullscreen";
 
 type NoteDraft = {
   id: string | null;
   title: string;
   content: string;
-  kind?: "rich" | "code";
-  language?: string;
-  codeFiles?: CodeFile[];
-  activeFile?: number;
 };
 
 function readDraft(key: string): NoteDraft | null {
@@ -76,60 +68,15 @@ function toHtmlBlocks(html: string): string {
 }
 
 function snippet(note: Note): string {
-  if (note.kind === "code") {
-    const files = parseCodeFiles(note.content);
-    const text = files && files.length ? files[0].content : note.content;
-    return text.length > 160 ? `${text.slice(0, 160)}…` : text;
-  }
   const text = toPlainText(note.content);
   return text.length > 160 ? `${text.slice(0, 160)}…` : text;
 }
 
-const CODE_EXT_COLORS: Record<string, { bg: string; fg: string }> = {
-  php: { bg: "#777BB3", fg: "#ffffff" },
-  ts: { bg: "#3178C6", fg: "#ffffff" },
-  tsx: { bg: "#3178C6", fg: "#ffffff" },
-  js: { bg: "#F0DB4F", fg: "#323330" },
-  jsx: { bg: "#F0DB4F", fg: "#323330" },
-  py: { bg: "#3776AB", fg: "#ffffff" },
-  html: { bg: "#E34F26", fg: "#ffffff" },
-  htm: { bg: "#E34F26", fg: "#ffffff" },
-  css: { bg: "#1572B6", fg: "#ffffff" },
-  json: { bg: "#F2C200", fg: "#323330" },
-  xml: { bg: "#8A9B0F", fg: "#ffffff" },
-  java: { bg: "#E76F00", fg: "#ffffff" },
-  go: { bg: "#00ADD8", fg: "#0b2b30" },
-  rb: { bg: "#CC342D", fg: "#ffffff" },
-  c: { bg: "#00599C", fg: "#ffffff" },
-  cpp: { bg: "#00599C", fg: "#ffffff" },
-  h: { bg: "#00599C", fg: "#ffffff" },
-  sh: { bg: "#4EAA25", fg: "#ffffff" },
-  md: { bg: "#5B5B5B", fg: "#ffffff" },
-};
-
-function codeCardMeta(note: Note): { label: string; bg: string; fg: string; name: string } {
-  const files = parseCodeFiles(note.content) ?? [];
-  const name = (files[0]?.name || note.title || "").trim();
-  const dot = name.lastIndexOf(".");
-  const ext = dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
-  const label = ext ? `.${ext}` : name ? name.toUpperCase() : "FILE";
-  const color = CODE_EXT_COLORS[ext] ?? { bg: "#3C3C3C", fg: "#ffffff" };
-  return { label, bg: color.bg, fg: color.fg, name: name || "untitled" };
-}
-
-function formatFileSize(chars: number): string {
-  if (!chars) return "0 B";
-  if (chars < 1024) return `${chars} B`;
-  if (chars < 1024 * 1024) return `${(chars / 1024).toFixed(1)} KB`;
-  return `${(chars / 1024 / 1024).toFixed(1)} MB`;
-}
-
-export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
+export function NotesView() {
   const { session } = useAuth();
   const { settings } = useSettings();
   const isGuest = session.status === "anonymous";
   const hasApiKey = settings.hasGeminiApiKey ?? false;
-  const isCodeMode = mode === "code";
   const { notes, addNote, updateNote, deleteNote } = useNotes();
   const [editor, setEditor] = useState<NoteDraft | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -144,29 +91,18 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   });
   const [toast, setToast] = useState("");
   const [search, setSearch] = useState("");
-  const [newCodeOpen, setNewCodeOpen] = useState(false);
-  const [newCodeName, setNewCodeName] = useState("");
-  const [openTabs, setOpenTabs] = useState<string[]>([]);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [moveModal, setMoveModal] = useState<{ id: string; name: string; mode: "move" | "copy" } | null>(null);
-  const [creatingFolder, setCreatingFolder] = useState(false);
   const savedTimer = useRef<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const draftKey = isGuest
-    ? (isCodeMode ? GUEST_CODE_DRAFT_KEY : GUEST_DRAFT_KEY)
-    : (isCodeMode ? CODE_DRAFT_KEY : DRAFT_KEY);
+  const draftKey = isGuest ? GUEST_DRAFT_KEY : DRAFT_KEY;
 
   // Resume a non-empty draft after refresh / navigation.
   useEffect(() => {
-    // Code mode always starts at the file list — never auto-open the editor from a draft.
-    if (isCodeMode) return;
     const draft = readDraft(draftKey);
     if (draft && (draft.title || draft.content)) {
-      // One-time sync of persisted draft from localStorage (external system) into React state.
       setEditor(draft);
     }
-  }, [draftKey, isCodeMode]);
+  }, [draftKey]);
 
   // Auto-save draft to localStorage on every keystroke.
   useEffect(() => {
@@ -189,9 +125,9 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     if (node.innerHTML !== display) {
       node.innerHTML = display;
     }
-    // Intentionally runs only when the edited note, view mode, or editor kind changes, not per keystroke.
+    // Intentionally runs only when the edited note or view mode changes, not per keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor?.id, fullscreen, editor?.kind]);
+  }, [editor?.id, fullscreen]);
 
   useEffect(() => () => {
     if (savedTimer.current) window.clearTimeout(savedTimer.current);
@@ -220,36 +156,11 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
   const query = search.trim();
   const visibleNotes = useMemo(() => {
     const byTag = (note: Note) => !activeTag || (note.tags ?? []).includes(activeTag);
-    const byMode = (note: Note) =>
-      isCodeMode
-        ? note.kind === "code" || isFolderNote(note)
-        : note.kind !== "code" && !isFolderNote(note);
-    const base = sortedNotes.filter((n) => byMode(n) && byTag(n));
+    const base = sortedNotes.filter((n) => byTag(n));
     if (query.length < 3) return base;
     const q = query.toLowerCase();
     return base.filter((note) => note.title.toLowerCase().includes(q));
-  }, [sortedNotes, query, activeTag, isCodeMode]);
-
-  // Code mode: items inside the currently open folder, folders always on top.
-  const codeItems = useMemo(() => {
-    if (!isCodeMode) return [];
-    const inFolder = visibleNotes.filter((n) => parentIdOf(n) === (currentFolderId ?? null));
-    const folders = inFolder.filter(isFolderNote).sort((a, b) => a.title.localeCompare(b.title));
-    const files = inFolder.filter((n) => !isFolderNote(n)).sort((a, b) => a.title.localeCompare(b.title));
-    return [...folders, ...files];
-  }, [visibleNotes, currentFolderId, isCodeMode]);
-
-  const folderPath = useMemo(() => {
-    const path: { id: string; name: string }[] = [];
-    let id = currentFolderId;
-    while (id) {
-      const f = notes.find((n) => n.id === id);
-      if (!f) break;
-      path.unshift({ id: f.id, name: f.title || "Untitled" });
-      id = parentIdOf(f);
-    }
-    return path;
-  }, [currentFolderId, notes]);
+  }, [sortedNotes, query, activeTag]);
 
   const email = session.status === "authed" ? session.email : "";
   const name = session.status === "authed" && (session as { name?: string }).name ? ((session as { name?: string }).name ?? "") : email;
@@ -296,317 +207,12 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     announce("Opened in new note");
   }
 
-  function renameNoteFile(noteId: string, name: string) {
-    const clean = name.trim();
-    if (!clean) return;
-    const ext = clean.includes(".") ? clean.split(".").pop()! : "";
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
-    const files = parseCodeFiles(note.content) ?? [];
-    const next = files.map((f, i) => (i === 0 ? { ...f, name: clean, language: codeLangForExt(ext) } : f));
-    const content = serializeCodeFiles(next);
-    const lang = codeLangForExt(ext);
-    const now = new Date().toISOString();
-    updateNote({ ...note, title: clean, content, kind: "code", language: lang, updatedAt: now });
-    if (editor?.id === noteId) {
-      setEditor((prev) => (prev ? { ...prev, title: clean, content, codeFiles: next, language: lang } : prev));
-    }
-  }
-
-  function duplicateNoteFile(noteId: string) {
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
-    const f = parseCodeFiles(note.content)?.[0];
-    const base = f?.name ?? note.title ?? "untitled";
-    const dot = base.lastIndexOf(".");
-    const name = dot > 0 ? base.slice(0, dot) + "-copy" + base.slice(dot) : base + "-copy";
-    const language = f?.language ?? note.language ?? "plaintext";
-    const seed: CodeFile[] = [{ name, language, content: f?.content ?? "" }];
-    const content = serializeCodeFiles(seed);
-    const now = new Date().toISOString();
-    const id = uid();
-    addNote({ id, title: name, content, kind: "code", language, createdAt: now, updatedAt: now });
-    setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
-  }
-
-  function deleteNoteFile(noteId: string) {
-    const note = notes.find((n) => n.id === noteId);
-    if (note) deleteNote(note.id);
-    setOpenTabs((prev) => prev.filter((id) => id !== noteId));
-    if (editor?.id === noteId) {
-      const remaining = openTabs.filter((id) => id !== noteId);
-      if (remaining.length === 0) {
-        setEditor(null);
-        clearDraft(draftKey);
-      } else {
-        const last = remaining[remaining.length - 1];
-        const n = notes.find((x) => x.id === last);
-        if (n) {
-          const files = parseCodeFiles(n.content) ?? [];
-          setEditor({ id: n.id, title: n.title, content: n.content, kind: "code", language: n.language, codeFiles: files, activeFile: 0 });
-        }
-      }
-    }
-  }
-
-  function setActiveFileLanguage(language: string) {
-    setEditor((prev) => {
-      if (!prev || !prev.codeFiles) return prev;
-      const i = prev.activeFile ?? 0;
-      const files = prev.codeFiles.map((f, idx) => (idx === i ? { ...f, language } : f));
-      const content = serializeCodeFiles(files);
-      if (prev.id) {
-        const existing = notes.find((n) => n.id === prev.id);
-        if (existing) updateNote({ ...existing, title: prev.title, content, kind: "code", language, updatedAt: new Date().toISOString() });
-      }
-      return { ...prev, codeFiles: files, content, language };
-    });
-  }
-
-  function selectCodeFile(noteId: string) {
-    if (editor?.id === noteId) return;
-    persistEditor();
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
-    // Always sync currentFolderId to this file's parent so new files land here.
-    setCurrentFolderId(parentIdOf(note));
-    const files = parseCodeFiles(note.content) ?? [];
-    setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
-    setOpenTabs((prev) => (prev.includes(noteId) ? prev : [...prev, noteId]));
-  }
-
-  function closeCodeTab(noteId: string) {
-    persistEditor();
-    const next = openTabs.filter((id) => id !== noteId);
-    setOpenTabs(next);
-    if (editor?.id === noteId) {
-      if (next.length === 0) {
-        setEditor(null);
-        clearDraft(draftKey);
-      } else {
-        const last = next[next.length - 1];
-        const note = notes.find((n) => n.id === last);
-        if (note) {
-          const files = parseCodeFiles(note.content) ?? [];
-          setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
-        }
-      }
-    }
-  }
-
-  function updateActiveCodeContent(value: string) {
-    setEditor((prev) => {
-      if (!prev || !prev.codeFiles) return prev;
-      const i = prev.activeFile ?? 0;
-      const files = prev.codeFiles.map((f, idx) => (idx === i ? { ...f, content: value } : f));
-      return { ...prev, codeFiles: files, content: serializeCodeFiles(files) };
-    });
-    markSaved();
-  }
-
-  function persistEditor() {
-    const e = editor;
-    if (!e) return;
-    const hasContent =
-      (e.content && e.content.trim()) ||
-      (e.codeFiles && e.codeFiles.length > 0) ||
-      (e.title && e.title.trim());
-    if (!hasContent) return;
-    const now = new Date().toISOString();
-    if (e.id) {
-      const existing = notes.find((n) => n.id === e.id);
-      if (existing) {
-        updateNote({ ...existing, title: e.title, content: e.content, kind: e.kind, language: e.language, updatedAt: now });
-        return;
-      }
-    }
-    const newId = uid();
-    addNote({ id: newId, title: e.title || "Untitled", content: e.content, kind: e.kind, language: e.language, createdAt: now, updatedAt: now });
-    setEditor((prev) => (prev ? { ...prev, id: newId } : prev));
-  }
-
   function openNote(note: Note) {
-    if (note.kind === "code") {
-      // Sync currentFolderId so new files/folders land in this file's parent.
-      setCurrentFolderId(parentIdOf(note));
-      const files = parseCodeFiles(note.content) ?? [];
-      setEditor({ id: note.id, title: note.title, content: note.content, kind: "code", language: note.language, codeFiles: files, activeFile: 0 });
-      if (isCodeMode) setOpenTabs((prev) => (prev.includes(note.id) ? prev : [...prev, note.id]));
-      return;
-    }
     setEditor({ id: note.id, title: note.title, content: note.content });
   }
 
-  function codeFilesForView(): CodeFile[] {
-    return (
-      editor?.codeFiles ??
-      (editor?.kind === "code" && editor.content ? parseCodeFiles(editor.content) ?? [] : [])
-    );
-  }
-
   function openNew() {
-    if (isCodeMode) {
-      setCreatingFolder(false);
-      setNewCodeName("");
-      setNewCodeOpen(true);
-      return;
-    }
-    setEditor({ id: null, title: "", content: "", kind: "rich" });
-  }
-
-  function createCodeFile() {
-    // Simpan dulu note yang sedang diedit agar tidak ada yang hilang.
-    persistEditor();
-    const name = newCodeName.trim() || "untitled";
-    const ext = name.includes(".") ? name.split(".").pop()! : "";
-    const language = codeLangForExt(ext);
-    const now = new Date().toISOString();
-    const id = uid();
-    const seed: CodeFile[] = [{ name, language, content: "" }];
-    const content = serializeCodeFiles(seed);
-    addNote({ id, title: name, content, kind: "code", language, tags: tagsWithParent([], currentFolderId), createdAt: now, updatedAt: now });
-    setEditor({ id, title: name, content, kind: "code", language, codeFiles: seed, activeFile: 0 });
-    setOpenTabs((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    setNewCodeOpen(false);
-  }
-
-  function createFolder() {
-    const name = (newCodeName.trim() || "New Folder").replace(/\.[^.]+$/, "");
-    const now = new Date().toISOString();
-    const id = uid();
-    addNote({
-      id,
-      title: name,
-      content: "",
-      kind: "folder",
-      tags: folderTags(currentFolderId),
-      createdAt: now,
-      updatedAt: now,
-    });
-    setNewCodeOpen(false);
-  }
-
-  function openFolder(folderId: string | null) {
-    setCurrentFolderId(folderId);
-  }
-
-  function navigateUp() {
-    if (!currentFolderId) return;
-    const current = notes.find((n) => n.id === currentFolderId);
-    setCurrentFolderId(current ? parentIdOf(current) : null);
-  }
-
-  const currentFolderName = useMemo(() => {
-    if (!currentFolderId) return "";
-    const f = notes.find((n) => n.id === currentFolderId);
-    return f ? f.title || "Untitled" : "";
-  }, [currentFolderId, notes]);
-
-  function handleDeleteItem(noteId: string, title: string, isFolder: boolean) {
-    if (isFolder) {
-      const childCount = notes.filter((n) => parentIdOf(n) === noteId).length;
-      if (childCount === 0) {
-        deleteNote(noteId);
-        announce("Folder deleted");
-      } else {
-        setConfirmDelete({ id: noteId, title });
-      }
-    } else {
-      deleteNote(noteId);
-      setOpenTabs((prev) => prev.filter((tid) => tid !== noteId));
-      if (editor?.id === noteId) {
-        const remaining = openTabs.filter((tid) => tid !== noteId);
-        if (remaining.length === 0) { setEditor(null); clearDraft(draftKey); }
-        else {
-          const last = remaining[remaining.length - 1];
-          const n = notes.find((x) => x.id === last);
-          if (n) { const files = parseCodeFiles(n.content) ?? []; setEditor({ id: n.id, title: n.title, content: n.content, kind: "code", language: n.language, codeFiles: files, activeFile: 0 }); }
-        }
-      }
-      announce("File deleted");
-    }
-  }
-
-  function deleteNoteWithChildren(noteId: string) {
-    const target = notes.find((n) => n.id === noteId);
-    if (!target) return;
-    if (isFolderNote(target)) {
-      // Re-parent direct children to the deleted folder's parent.
-      const parent = parentIdOf(target);
-      notes
-        .filter((n) => parentIdOf(n) === noteId)
-        .forEach((child) => {
-          updateNote({ ...child, tags: tagsWithParent(child.tags, parent), updatedAt: new Date().toISOString() });
-        });
-    }
-    deleteNote(noteId);
-    setOpenTabs((prev) => prev.filter((id) => id !== noteId));
-    if (editor?.id === noteId) {
-      const remaining = openTabs.filter((id) => id !== noteId);
-      if (remaining.length === 0) { setEditor(null); clearDraft(draftKey); }
-      else {
-        const last = remaining[remaining.length - 1];
-        const n = notes.find((x) => x.id === last);
-        if (n) { const files = parseCodeFiles(n.content) ?? []; setEditor({ id: n.id, title: n.title, content: n.content, kind: "code", language: n.language, codeFiles: files, activeFile: 0 }); }
-      }
-    }
-  }
-
-  function moveNoteTo(noteId: string, dest: string | null) {
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
-    if (isFolderNote(note) && dest) {
-      // Prevent moving a folder into itself or its descendant.
-      let p: string | null = dest;
-      while (p) {
-        if (p === noteId) return;
-        const f = notes.find((n) => n.id === p);
-        p = f ? parentIdOf(f) : null;
-      }
-    }
-    updateNote({ ...note, tags: tagsWithParent(note.tags, dest), updatedAt: new Date().toISOString() });
-  }
-
-  function copyNoteTo(noteId: string, dest: string | null) {
-    const note = notes.find((n) => n.id === noteId);
-    if (!note) return;
-    if (isFolderNote(note)) {
-      // Deep-copy folder and all descendants into dest.
-      const idMap = new Map<string, string>();
-      const clone = (srcId: string, parent: string | null) => {
-        const src = notes.find((n) => n.id === srcId);
-        if (!src) return;
-        const newId = uid();
-        idMap.set(srcId, newId);
-        const isFolder = isFolderNote(src);
-        addNote({
-          id: newId,
-          title: src.title,
-          content: src.content,
-          kind: isFolder ? "folder" : "code",
-          language: src.language,
-          tags: isFolder ? folderTags(parent) : tagsWithParent(src.tags, parent),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        notes.filter((n) => parentIdOf(n) === srcId).forEach((child) => clone(child.id, newId));
-      };
-      clone(noteId, dest);
-    } else {
-      const ext = note.title.includes(".") ? note.title.slice(note.title.lastIndexOf(".")) : "";
-      const newId = uid();
-      addNote({
-        id: newId,
-        title: note.title.replace(/\.(?=[^.]+$)/, "-copy."),
-        content: note.content,
-        kind: "code",
-        language: note.language,
-        tags: tagsWithParent(note.tags, dest),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-    }
+    setEditor({ id: null, title: "", content: "" });
   }
 
   /** Save the current note (if non-empty) then open a blank note. */
@@ -621,10 +227,10 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
       if (editor.id) {
         const existing = notes.find((n) => n.id === editor.id);
         if (existing) {
-          updateNote({ ...existing, title: finalTitle, content, kind: editor.kind, language: editor.language, updatedAt: now });
+          updateNote({ ...existing, title: finalTitle, content, updatedAt: now });
         }
       } else {
-        addNote({ id: uid(), title: finalTitle, content, kind: editor.kind, language: editor.language, createdAt: now, updatedAt: now });
+        addNote({ id: uid(), title: finalTitle, content, createdAt: now, updatedAt: now });
       }
       announce("Note saved");
     }
@@ -693,14 +299,14 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
       if (editor.id) {
         const existing = notes.find((n) => n.id === editor.id);
         if (existing) {
-          base = { ...existing, title, content: editor.content, kind: editor.kind, language: editor.language, updatedAt: now };
+          base = { ...existing, title, content: editor.content, updatedAt: now };
           updateNote(base);
         } else {
-          base = { id: editor.id, title, content: editor.content, kind: editor.kind, language: editor.language, tags: [], actionItems: [], createdAt: now, updatedAt: now };
+          base = { id: editor.id, title, content: editor.content, tags: [], actionItems: [], createdAt: now, updatedAt: now };
         }
       } else {
         const newId = uid();
-        base = { id: newId, title, content: editor.content, kind: editor.kind, language: editor.language, tags: [], actionItems: [], createdAt: now, updatedAt: now };
+        base = { id: newId, title, content: editor.content, tags: [], actionItems: [], createdAt: now, updatedAt: now };
         addNote(base);
         clearDraft(draftKey);
         setEditor((prev) => (prev ? { ...prev, id: newId } : prev));
@@ -816,7 +422,6 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
 
   function handleShare() {
     if (!editor) return;
-    // Save the note first so it exists in the DB before sharing
     const title = editor.title.trim();
     const content = editor.content.trim();
     if (!title && !toPlainText(content)) {
@@ -829,11 +434,11 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
       if (editor.id) {
         const existing = notes.find((n) => n.id === editor.id);
         if (existing) {
-          updateNote({ ...existing, title: finalTitle, content, kind: editor.kind, language: editor.language, updatedAt: now });
+          updateNote({ ...existing, title: finalTitle, content, updatedAt: now });
         }
       } else {
         noteId = uid();
-        addNote({ id: noteId, title: finalTitle, content, kind: editor.kind, language: editor.language, createdAt: now, updatedAt: now });
+        addNote({ id: noteId, title: finalTitle, content, createdAt: now, updatedAt: now });
       }
     clearDraft(draftKey);
     setEditor({ id: noteId, title: finalTitle, content });
@@ -855,7 +460,7 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     if (editor.id) {
       const existing = notes.find((n) => n.id === editor.id);
       if (existing) {
-        updateNote({ ...existing, title: finalTitle, content, kind: editor.kind, language: editor.language, updatedAt: now });
+        updateNote({ ...existing, title: finalTitle, content, updatedAt: now });
         announce("Note saved");
       }
     } else {
@@ -865,156 +470,18 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     setEditor(null);
   }
 
-  const confirmModal = confirmDelete && (() => {
-    const target = notes.find((n) => n.id === confirmDelete.id);
-    const isFolder = target ? isFolderNote(target) : false;
-    const childCount = isFolder ? notes.filter((n) => parentIdOf(n) === confirmDelete.id).length : 0;
-    return (
-      <ConfirmModal
-        title={isFolder ? `Delete folder "${confirmDelete.title || "Untitled"}"?` : `Delete "${confirmDelete.title || "Untitled note"}"?`}
-        message={isFolder && childCount > 0 ? `This folder contains ${childCount} item${childCount > 1 ? "s" : ""}. They will be moved to the parent folder. This action cannot be undone.` : "This action cannot be undone."}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={() => {
-          deleteNoteWithChildren(confirmDelete.id);
-          announce(isFolder ? "Folder deleted" : "Note deleted");
-          setConfirmDelete(null);
-        }}
-      />
-    );
-  })();
-
-  const newCodeModal = newCodeOpen ? (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-      onClick={() => setNewCodeOpen(false)}
-    >
-      <div
-        className="w-[320px] rounded-xl bg-[#252526] p-4 text-[#cccccc] shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="mb-2 text-sm font-semibold">{creatingFolder ? "New folder" : "New code file"}</p>
-        <input
-          autoFocus
-          value={newCodeName}
-          onChange={(e) => setNewCodeName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") creatingFolder ? createFolder() : createCodeFile();
-            if (e.key === "Escape") setNewCodeOpen(false);
-          }}
-          placeholder={creatingFolder ? "e.g. src, utils" : "e.g. app.ts, script.py"}
-          className="w-full rounded-md border border-[#007fd4] bg-[#3c3c3c] px-2 py-1.5 text-sm text-white outline-none"
-        />
-        {!creatingFolder && <p className="mt-1.5 text-[0.68rem] text-[#858585]">Language is detected automatically from the extension.</p>}
-        <div className="mt-3 flex justify-end gap-2">
-          <button
-            onClick={() => setNewCodeOpen(false)}
-            className="rounded-md px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => creatingFolder ? createFolder() : createCodeFile()}
-            className="rounded-md bg-[#007fd4] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1c8ad6]"
-          >
-            Create
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  // Move/Copy destination modal
-  const moveModalEl = moveModal ? (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-      onClick={() => setMoveModal(null)}
-    >
-      <div
-        className="w-[340px] rounded-xl bg-[#252526] p-4 text-[#cccccc] shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="mb-3 text-sm font-semibold">
-          {moveModal.mode === "move" ? "Move" : "Copy"} &ldquo;{moveModal.name}&rdquo;
-        </p>
-        <p className="mb-2 text-xs text-[#858585]">Choose a destination folder:</p>
-        <div className="max-h-[240px] space-y-1 overflow-y-auto">
-          <button
-            onClick={() => {
-              if (moveModal.mode === "move") moveNoteTo(moveModal.id, null);
-              else copyNoteTo(moveModal.id, null);
-              setMoveModal(null);
-              announce(moveModal.mode === "move" ? "Moved to root" : "Copied to root");
-            }}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-[#2a2d2e]"
-          >
-            📂 Root
-          </button>
-          {notes
-            .filter((n) => isFolderNote(n) && n.id !== moveModal.id)
-            .sort((a, b) => a.title.localeCompare(b.title))
-            .map((folder) => (
-              <button
-                key={folder.id}
-                onClick={() => {
-                  if (moveModal.mode === "move") moveNoteTo(moveModal.id, folder.id);
-                  else copyNoteTo(moveModal.id, folder.id);
-                  setMoveModal(null);
-                  announce(moveModal.mode === "move" ? `Moved to ${folder.title}` : `Copied to ${folder.title}`);
-                }}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-[#2a2d2e]"
-              >
-                📁 {folder.title || "Untitled"}
-              </button>
-            ))}
-        </div>
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={() => setMoveModal(null)}
-            className="rounded-md px-3 py-1.5 text-xs text-[#cccccc] hover:bg-[#2a2d2e]"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  // Explorer + tabs for the code workspace: full hierarchy from root.
-  const codeExplorer: ExplorerItem[] = (() => {
-    const items: ExplorerItem[] = [];
-    const addFolder = (parentId: string | null, depth: number) => {
-      notes
-        .filter((n) => isFolderNote(n) && parentIdOf(n) === parentId)
-        .sort((a, b) => a.title.localeCompare(b.title))
-        .forEach((folder) => {
-          const indent = "  ".repeat(depth);
-          items.push({ noteId: folder.id, name: `${indent}${folder.title || "Untitled"}`, language: "folder" });
-          // Add files inside this folder
-          notes
-            .filter((n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === folder.id)
-            .sort((a, b) => a.title.localeCompare(b.title))
-            .forEach((n) => {
-              const f = parseCodeFiles(n.content)?.[0];
-              items.push({ noteId: n.id, name: `${indent}  ${f?.name ?? n.title ?? "untitled"}`, language: f?.language ?? n.language ?? "plaintext" });
-            });
-          addFolder(folder.id, depth + 1);
-        });
-    };
-    // Root files first
-    notes
-      .filter((n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === null)
-      .sort((a, b) => a.title.localeCompare(b.title))
-      .forEach((n) => {
-        const f = parseCodeFiles(n.content)?.[0];
-        items.push({ noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? n.language ?? "plaintext" });
-      });
-    // Then folders and their contents recursively
-    addFolder(null, 0);
-    return items;
-  })();
-  const openTabItems: OpenTabItem[] = openTabs
-    .map((id) => codeExplorer.find((e) => e.noteId === id))
-    .filter((x): x is ExplorerItem => Boolean(x));
+  const confirmModal = confirmDelete && (
+    <ConfirmModal
+      title={`Delete "${confirmDelete.title || "Untitled note"}"?`}
+      message="This action cannot be undone."
+      onClose={() => setConfirmDelete(null)}
+      onConfirm={() => {
+        deleteNote(confirmDelete.id);
+        announce("Note deleted");
+        setConfirmDelete(null);
+      }}
+    />
+  );
 
   // ---------------- Editor (MS Word style paper) ----------------
   if (editor) {
@@ -1022,82 +489,43 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     if (fullscreen) {
       return (
         <div className="fixed inset-0 z-[80] flex flex-col bg-[#1e1e1e]">
-          {isCodeMode ? (
-            <CodeWorkspace
-              files={codeFilesForView()}
-              activeFile={editor.activeFile ?? 0}
-              onChange={updateActiveCodeContent}
-              onRenameNote={renameNoteFile}
-              onDuplicateNote={duplicateNoteFile}
-              onDeleteNote={deleteNoteFile}
-              onSetLanguage={setActiveFileLanguage}
-              onAddFile={() => { setCreatingFolder(false); setNewCodeName(""); setNewCodeOpen(true); }}
-              onAddFolder={() => { setCreatingFolder(true); setNewCodeName(""); setNewCodeOpen(true); }}
-              explorerItems={codeExplorer}
-              openTabs={openTabItems}
-              activeNoteId={editor?.id}
-              onSelectFile={selectCodeFile}
-              onSelectFolder={openFolder}
-              onCloseTab={closeCodeTab}
-              onBack={() => {
-                if (currentFolderId) { navigateUp(); }
-                else { persistEditor(); setEditor(null); clearDraft(draftKey); }
-              }}
-              onNavigateUp={currentFolderId ? navigateUp : undefined}
-              currentFolderName={currentFolderName || "Workspace"}
-              onFullscreen={() => setFullscreen(false)}
-              onShare={handleShare}
-              onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
-              hasActiveNote={!!editor.id}
-              isGuest={isGuest}
-            />
-          ) : (
-            <>
-              <EditorToolbar
-                title={editor.title}
-                html={editor.content}
-                hasApiKey={hasApiKey}
-                isGuest={isGuest}
-                hasActiveNote={!!editor.id}
-                smartBusy={smartBusy}
-                wordStats={wordStats}
-                contentRef={contentRef}
-                onContentChange={(html) => updateDraft({ content: html })}
-                onUploadHtml={handleUploadHtml}
-                isCode={false}
-                language={editor.language}
-                onBack={() => setFullscreen(false)}
-                onNewNote={handleNewNote}
-                onShare={handleShare}
-                onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
-                onFullscreen={() => setFullscreen(false)}
-                onAiOpen={() => setAiOpen(true)}
-                onRunSmart={() => void runSmart()}
-                onDownloadTxt={downloadTxt}
-                onDownloadPdf={() => void downloadPdf()}
-                onDownloadWord={() => void downloadWord()}
-                announce={announce}
-              />
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
-                <div className="flex-1 overflow-y-auto p-0 sm:p-6">
-                  <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-                    <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
-                    <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
-                      <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
-                      <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.target as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
-                    </div>
-                  </div>
+          <EditorToolbar
+            title={editor.title}
+            html={editor.content}
+            hasApiKey={hasApiKey}
+            isGuest={isGuest}
+            hasActiveNote={!!editor.id}
+            smartBusy={smartBusy}
+            wordStats={wordStats}
+            contentRef={contentRef}
+            onContentChange={(html) => updateDraft({ content: html })}
+            onUploadHtml={handleUploadHtml}
+            onBack={() => setFullscreen(false)}
+            onNewNote={handleNewNote}
+            onShare={handleShare}
+            onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+            onFullscreen={() => setFullscreen(false)}
+            onAiOpen={() => setAiOpen(true)}
+            onRunSmart={() => void runSmart()}
+            onDownloadTxt={downloadTxt}
+            onDownloadPdf={() => void downloadPdf()}
+            onDownloadWord={() => void downloadWord()}
+            announce={announce}
+          />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#e9eaed]">
+            <div className="flex-1 overflow-y-auto p-0 sm:p-6">
+              <div ref={paperRef} className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+                <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+                <div className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
+                  <input value={editor.title} onChange={(e) => updateDraft({ title: (e.target as HTMLInputElement).value })} placeholder="Untitled document" maxLength={80} className="mb-3 w-full border-0 border-b border-gray-300 bg-transparent px-1 py-2 text-base font-semibold text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none sm:text-xl" />
+                  <div ref={contentRef} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" data-ph="Start writing…" onInput={(e) => updateDraft({ content: (e.target as HTMLDivElement).innerHTML })} className="note-editor min-h-[40vh] w-full bg-transparent text-sm leading-7 text-gray-800 outline-none sm:text-lg sm:leading-9 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline" />
                 </div>
               </div>
-              <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
-            </>
-          )}
-
-          {/* Toast */}
+            </div>
+          </div>
+          <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
           {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
           {toast && <div className="fixed bottom-20 left-1/2 z-[90] -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-3 text-xs font-semibold text-white shadow-xl md:bottom-5">{toast}</div>}
-          {newCodeModal}
-          {moveModalEl}
         </div>
       );
     }
@@ -1105,129 +533,91 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
     // ---- Normal editor (inside NotesShell) ----
     return (
       <NotesShell
-        bare={isCodeMode}
-        title={isCodeMode ? "" : "Notes"}
-        subtitle={isCodeMode ? "" : "Project notes"}
+        title="Notes"
+        subtitle="Project notes"
         headerExtra={
-          isCodeMode ? undefined : (
-            <input
-              value={editor.title}
-              onChange={(e) => updateDraft({ title: e.target.value })}
-              placeholder="Untitled document"
-              maxLength={80}
-              className="w-full max-w-[280px] border-0 border-b border-gray-300 bg-transparent px-1 py-1.5 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none"
-            />
-          )
+          <input
+            value={editor.title}
+            onChange={(e) => updateDraft({ title: e.target.value })}
+            placeholder="Untitled document"
+            maxLength={80}
+            className="w-full max-w-[280px] border-0 border-b border-gray-300 bg-transparent px-1 py-1.5 text-sm font-medium text-gray-800 placeholder:text-gray-400 outline-none focus:border-violet-500 focus:ring-0 rounded-none"
+          />
         }
       >
-        {isCodeMode ? (
-          <CodeWorkspace
-              files={codeFilesForView()}
-              activeFile={editor.activeFile ?? 0}
-              onChange={updateActiveCodeContent}
-              onRenameNote={renameNoteFile}
-              onDuplicateNote={duplicateNoteFile}
-              onDeleteNote={deleteNoteFile}
-              onSetLanguage={setActiveFileLanguage}
-              onAddFile={() => { setCreatingFolder(false); setNewCodeName(""); setNewCodeOpen(true); }}
-              onAddFolder={() => { setCreatingFolder(true); setNewCodeName(""); setNewCodeOpen(true); }}
-              explorerItems={codeExplorer}
-              openTabs={openTabItems}
-              activeNoteId={editor?.id}
-              onSelectFile={selectCodeFile}
-              onSelectFolder={openFolder}
-              onCloseTab={closeCodeTab}
-              onBack={() => {
-                if (currentFolderId) { navigateUp(); }
-                else { persistEditor(); setEditor(null); clearDraft(draftKey); }
-              }}
-              onNavigateUp={currentFolderId ? navigateUp : undefined}
-              currentFolderName={currentFolderName || "Workspace"}
-              onFullscreen={() => setFullscreen(true)}
-              onShare={handleShare}
-              onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
-              hasActiveNote={!!editor.id}
-              isGuest={isGuest}
-            />
-          ) : (
-            <>
-              <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
-              <EditorToolbar
-                title={editor.title}
-                html={editor.content}
-                hasApiKey={hasApiKey}
-                isGuest={isGuest}
-                hasActiveNote={!!editor.id}
-                smartBusy={smartBusy}
-                wordStats={wordStats}
-                contentRef={contentRef}
-                onContentChange={(html) => updateDraft({ content: html })}
-                onUploadHtml={handleUploadHtml}
-                isCode={false}
-                language={editor.language}
-                onBack={handleBack}
-                onNewNote={handleNewNote}
-                onShare={handleShare}
-                onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
-                onFullscreen={() => setFullscreen(true)}
-                onAiOpen={() => setAiOpen(true)}
-                onRunSmart={() => void runSmart()}
-                onDownloadTxt={downloadTxt}
-                onDownloadPdf={() => void downloadPdf()}
-                onDownloadWord={() => void downloadWord()}
-                announce={announce}
+        <style>{`.note-editor:empty::before { content: attr(data-ph); color: var(--crm-placeholder); pointer-events: none; }`}</style>
+        <EditorToolbar
+          title={editor.title}
+          html={editor.content}
+          hasApiKey={hasApiKey}
+          isGuest={isGuest}
+          hasActiveNote={!!editor.id}
+          smartBusy={smartBusy}
+          wordStats={wordStats}
+          contentRef={contentRef}
+          onContentChange={(html) => updateDraft({ content: html })}
+          onUploadHtml={handleUploadHtml}
+          onBack={handleBack}
+          onNewNote={handleNewNote}
+          onShare={handleShare}
+          onDelete={() => editor.id && setConfirmDelete({ id: editor.id, title: editor.title })}
+          onFullscreen={() => setFullscreen(true)}
+          onAiOpen={() => setAiOpen(true)}
+          onRunSmart={() => void runSmart()}
+          onDownloadTxt={downloadTxt}
+          onDownloadPdf={() => void downloadPdf()}
+          onDownloadWord={() => void downloadWord()}
+          announce={announce}
+        />
+        <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
+          <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
+            <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
+            <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
+              <div
+                ref={contentRef}
+                contentEditable
+                suppressContentEditableWarning
+                role="textbox"
+                aria-multiline="true"
+                data-ph="Start writing…"
+                onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
+                className="note-editor min-h-[40vh] flex-1 bg-transparent text-[0.9375rem] leading-7 text-(--crm-fg) outline-none sm:text-base sm:leading-8 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
               />
-              <div className="flex-1 overflow-y-auto p-0 sm:p-6 bg-[#e9eaed]">
-                <div className="relative mx-auto w-full max-w-[794px] bg-white border border-gray-300 shadow-[0_2px_10px_rgba(0,0,0,.08)]" style={{ minHeight: "1123px" }}>
-                  <div className="pointer-events-none absolute inset-0 max-sm:m-3 sm:m-[72px_64px]" style={{ border: '1px dashed rgba(0,0,0,0.08)' }} />
-                  <div ref={paperRef} className="relative px-3 py-3 sm:px-[64px] sm:py-[72px]">
-                    <div
-                      ref={contentRef}
-                      contentEditable
-                      suppressContentEditableWarning
-                      role="textbox"
-                      aria-multiline="true"
-                      data-ph="Start writing…"
-                      onInput={(event) => updateDraft({ content: (event.currentTarget as HTMLDivElement).innerHTML })}
-                      className="note-editor min-h-[40vh] flex-1 bg-transparent text-[0.9375rem] leading-7 text-(--crm-fg) outline-none sm:text-base sm:leading-8 [&_div]:mb-1 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_a]:text-blue-600 [&_a]:underline"
-                    />
-                  </div>
+            </div>
 
-                  {/* Action Items */}
-                  {editingNote && actionItems.length > 0 && (
-                    <div className="mt-4 rounded-xl border border-(--crm-border) bg-white p-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-(--crm-fg)"><Wand2 size={14} className="text-violet-500" />Action Items</h4>
-                        <span className="text-[0.69rem] font-medium text-(--crm-muted)">{actionItems.filter((item) => item.done).length}/{actionItems.length} done</span>
-                      </div>
-                      <ul className="mt-3 space-y-1">
-                        {actionItems.map((item, index) => (
-                          <li key={`${item.text}-${index}`} className="group/item flex items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-(--crm-soft)">
-                            <input type="checkbox" checked={item.done} onChange={() => toggleActionItem(index)} className="h-3.5 w-3.5 shrink-0 accent-violet-600" aria-label={item.text} />
-                            <span className={`min-w-0 flex-1 truncate text-xs ${item.done ? "text-(--crm-faint) line-through" : "text-(--crm-fg)"}`}>{item.text}</span>
-                            <button onClick={() => removeActionItem(index)} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:text-red-500 group-hover/item:opacity-100" aria-label="Remove"><X size={12} /></button>
-                          </li>
-                        ))}
-                      </ul>
-                      <form
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          const input = event.currentTarget.elements.namedItem("newItem") as HTMLInputElement;
-                          addActionItem(input.value);
-                          input.value = "";
-                        }}
-                        className="mt-2.5 flex gap-2"
-                      >
-                        <input name="newItem" placeholder="Add task…" className="h-8 flex-1 rounded-lg border border-(--crm-border-input) bg-(--crm-surface) px-3 text-xs outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-focus-border)" />
-                        <button type="submit" className="rounded-lg border border-(--crm-border) bg-(--crm-surface) px-2.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft)">Add</button>
-                      </form>
-                    </div>
-                  )}
+            {/* Action Items */}
+            {editingNote && actionItems.length > 0 && (
+              <div className="mt-4 rounded-xl border border-(--crm-border) bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="flex items-center gap-1.5 text-sm font-semibold text-(--crm-fg)"><Wand2 size={14} className="text-violet-500" />Action Items</h4>
+                  <span className="text-[0.69rem] font-medium text-(--crm-muted)">{actionItems.filter((item) => item.done).length}/{actionItems.length} done</span>
                 </div>
+                <ul className="mt-3 space-y-1">
+                  {actionItems.map((item, index) => (
+                    <li key={`${item.text}-${index}`} className="group/item flex items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-(--crm-soft)">
+                      <input type="checkbox" checked={item.done} onChange={() => toggleActionItem(index)} className="h-3.5 w-3.5 shrink-0 accent-violet-600" aria-label={item.text} />
+                      <span className={`min-w-0 flex-1 truncate text-xs ${item.done ? "text-(--crm-faint) line-through" : "text-(--crm-fg)"}`}>{item.text}</span>
+                      <button onClick={() => removeActionItem(index)} className="shrink-0 rounded p-0.5 text-(--crm-muted) opacity-0 transition-opacity hover:text-red-500 group-hover/item:opacity-100" aria-label="Remove"><X size={12} /></button>
+                    </li>
+                  ))}
+                </ul>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const input = event.currentTarget.elements.namedItem("newItem") as HTMLInputElement;
+                    addActionItem(input.value);
+                    input.value = "";
+                  }}
+                  className="mt-2.5 flex gap-2"
+                >
+                  <input name="newItem" placeholder="Add task…" className="h-8 flex-1 rounded-lg border border-(--crm-border-input) bg-(--crm-surface) px-3 text-xs outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-focus-border)" />
+                  <button type="submit" className="rounded-lg border border-(--crm-border) bg-(--crm-surface) px-2.5 text-xs font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft)">Add</button>
+                </form>
               </div>
-              <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
-            </>
-          )}
+            )}
+          </div>
+        </div>
+        <EditorStatusBar stats={wordStats} draftSaved={draftSaved} />
 
         {confirmModal}
         {shareNote && (
@@ -1238,62 +628,24 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
         )}
         {aiOpen && <NoteAiPanel noteId={editor.id ?? null} noteContent={editor.content} canSync={!isGuest} userName={displayName} onClose={() => setAiOpen(false)} onInsert={handleAiInsert} onSaveAsNote={handleSaveAiToNewNote} />}
         {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
-      {newCodeModal}
-      {moveModalEl}
       </NotesShell>
     );
   }
 
   // ---------------- Grid view ----------------
   return (
-    <NotesShell title={isCodeMode ? "Code" : "Notes"} subtitle={isCodeMode ? "Code editor" : "Project notes"}>
+    <NotesShell title="Notes" subtitle="Project notes">
       <div className="crm-rise">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold tracking-[-.04em] sm:text-[1.625rem]">{isCodeMode ? "Code editor" : "Project notes"}</h2>
-            <p className="mt-1 text-sm text-(--crm-secondary)">{query.length >= 3 ? `${visibleNotes.length} ${visibleNotes.length === 1 ? "match" : "matches"} for "${query}"` : `${visibleNotes.length} ${visibleNotes.length === 1 ? (isCodeMode ? "file" : "note") : (isCodeMode ? "files" : "notes")} ${isCodeMode ? "in your workspace." : "to manage your projects."}`}</p>
+            <h2 className="text-xl font-semibold tracking-[-.04em] sm:text-[1.625rem]">Project notes</h2>
+            <p className="mt-1 text-sm text-(--crm-secondary)">{query.length >= 3 ? `${visibleNotes.length} ${visibleNotes.length === 1 ? "match" : "matches"} for "${query}"` : `${visibleNotes.length} ${visibleNotes.length === 1 ? "note" : "notes"} to manage your projects.`}</p>
           </div>
-          <div className="flex items-center gap-2">
-            {isCodeMode && (
-              <button
-                onClick={() => { setCreatingFolder(true); setNewCodeName(""); setNewCodeOpen(true); }}
-                className="flex shrink-0 items-center gap-1 rounded-md border border-(--crm-border) bg-(--crm-surface) px-2 py-1.5 text-[0.65rem] font-semibold text-(--crm-secondary) transition-colors hover:bg-(--crm-soft) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"
-              >
-                <Folder size={12} />New Folder
-              </button>
-            )}
-            <button onClick={() => { setCreatingFolder(false); openNew(); }} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"><Plus size={12} />{isCodeMode ? "New File" : "New Note"}</button>
-          </div>
+          <button onClick={openNew} className="flex shrink-0 items-center gap-1 rounded-md bg-(--crm-primary) px-2 py-1.5 text-[0.65rem] font-semibold text-white shadow-sm transition-all hover:bg-(--crm-dark) sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-2 sm:text-xs"><Plus size={12} />New Note</button>
         </div>
-        {/* Breadcrumb for code mode */}
-        {isCodeMode && (
-          <div className="mt-3 flex items-center gap-1 text-xs text-(--crm-muted)">
-            <button
-              onClick={() => openFolder(null)}
-              className={`rounded px-1.5 py-0.5 transition-colors ${currentFolderId === null ? "font-semibold text-(--crm-fg)" : "hover:bg-(--crm-soft) hover:text-(--crm-fg)"}`}
-            >
-              📂 Root
-            </button>
-            {folderPath.map((f) => (
-              <span key={f.id} className="flex items-center gap-1">
-                <span className="text-(--crm-faint)">/</span>
-                <button
-                  onClick={() => openFolder(f.id)}
-                  className={`rounded px-1.5 py-0.5 transition-colors ${
-                    folderPath[folderPath.length - 1]?.id === f.id
-                      ? "font-semibold text-(--crm-fg)"
-                      : "hover:bg-(--crm-soft) hover:text-(--crm-fg)"
-                  }`}
-                >
-                  {f.name}
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
         <div className="relative mt-3">
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-(--crm-muted)" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={isCodeMode ? "Search code…" : "Search notes…"} className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:max-w-[240px]" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes…" className="w-full rounded-xl border border-(--crm-border-input) bg-(--crm-panel) py-2.5 pl-9 pr-3 text-sm text-(--crm-fg) outline-none transition-colors placeholder:text-(--crm-placeholder) focus:border-(--crm-accent) sm:max-w-[240px]" />
         </div>
       </div>
 
@@ -1309,161 +661,46 @@ export function NotesView({ mode = "notes" }: { mode?: "notes" | "code" }) {
       {sortedNotes.length === 0 ? (
         <div className="crm-rise mt-6 rounded-2xl border border-dashed border-(--crm-border) bg-(--crm-panel) px-6 py-24 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-(--crm-soft) text-(--crm-text)"><StickyNote size={28} /></div>
-          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">{isCodeMode ? "No code files yet" : "No notes yet"}</p>
-          <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-(--crm-muted)">{isCodeMode ? "This page is empty. Click New File in the top right to create your first code file." : "This page is empty. Click New Note in the top right to start writing your first project note."}</p>
+          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">No notes yet</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-(--crm-muted)">This page is empty. Click New Note in the top right to start writing your first project note.</p>
         </div>
       ) : visibleNotes.length === 0 ? (
         <div className="crm-rise mt-6 rounded-2xl border border-dashed border-(--crm-border) bg-(--crm-panel) px-6 py-20 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-(--crm-soft) text-(--crm-text)"><Search size={24} /></div>
-          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">{isCodeMode ? "No code files found" : "No notes found"}</p>
+          <p className="mt-5 text-sm font-semibold text-(--crm-fg)">No notes found</p>
           <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-(--crm-muted)">Nothing matches <span className="font-semibold text-(--crm-brand)">&ldquo;{query}&rdquo;</span>. Try different keywords.</p>
-        </div>
-      ) : isCodeMode ? (
-        <div className="crm-rise mt-4 overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white">
-          {currentFolderId && (
-            <div className="flex items-center gap-2 border-b border-(--crm-border-soft) px-4 py-2 text-xs">
-              <button onClick={() => openFolder(null)} className="text-(--crm-brand) hover:underline">⬆ Up</button>
-            </div>
-          )}
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-(--crm-border-soft) text-[0.68rem] uppercase tracking-wide text-(--crm-muted)">
-                <th className="px-4 py-3 font-semibold">Name</th>
-                <th className="px-4 py-3 font-semibold">Size</th>
-                <th className="px-4 py-3 font-semibold">Format</th>
-                <th className="px-4 py-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {codeItems.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-(--crm-muted)">This folder is empty. Create a new file or folder.</td></tr>
-              )}
-              {codeItems.map((note) => {
-                const isFolder = isFolderNote(note);
-                const meta = isFolder ? null : codeCardMeta(note);
-                const file = isFolder ? null : parseCodeFiles(note.content)?.[0];
-                const size = isFolder ? "—" : formatFileSize(file?.content?.length ?? note.content?.length ?? 0);
-                return (
-                  <tr
-                    key={note.id}
-                    onClick={() => isFolder ? openFolder(note.id) : openNote(note)}
-                    className="group cursor-pointer border-b border-(--crm-border-soft) last:border-0 hover:bg-(--crm-soft)"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        {isFolder ? (
-                          <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-600">
-                            <Folder size={16} />
-                          </span>
-                        ) : (
-                          <span className="flex h-7 w-9 shrink-0 items-center justify-center rounded-md text-[0.58rem] font-black" style={{ background: meta!.bg, color: meta!.fg }}>{meta!.label}</span>
-                        )}
-                        <span className="font-medium text-(--crm-fg)">{isFolder ? note.title || "Untitled" : meta!.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 tabular-nums text-(--crm-muted)">{size}</td>
-                    <td className="px-4 py-3">
-                      {isFolder ? (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-600">Folder</span>
-                      ) : (
-                        <span className="rounded-full bg-(--crm-soft) px-2 py-0.5 text-[0.7rem] font-semibold text-(--crm-secondary)">{meta!.label}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        {isFolder ? (
-                          <button
-                            onClick={() => openFolder(note.id)}
-                            className="rounded-md px-2.5 py-1 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-soft)"
-                          >
-                            Open
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openNote(note)}
-                            className="rounded-md px-2.5 py-1 text-xs font-semibold text-(--crm-brand) hover:bg-(--crm-soft)"
-                          >
-                            Open
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setMoveModal({ id: note.id, name: note.title || "Untitled", mode: "move" })}
-                          className="rounded-md px-2 py-1 text-xs text-(--crm-muted) hover:bg-(--crm-soft) hover:text-(--crm-fg)"
-                        >
-                          Move
-                        </button>
-                        <button
-                          onClick={() => setMoveModal({ id: note.id, name: note.title || "Untitled", mode: "copy" })}
-                          className="rounded-md px-2 py-1 text-xs text-(--crm-muted) hover:bg-(--crm-soft) hover:text-(--crm-fg)"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          onClick={() => handleDeleteItem(note.id, note.title || "Untitled", isFolder)}
-                          className="rounded-md p-1.5 text-(--crm-muted) hover:bg-(--crm-danger-bg) hover:text-(--crm-danger)"
-                          aria-label="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       ) : (
         <div className="crm-rise mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-4">
-            {visibleNotes.map((note) => {
-              const meta = isCodeMode ? codeCardMeta(note) : null;
-              return (
+            {visibleNotes.map((note) => (
               <div key={note.id} onClick={() => openNote(note)} role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openNote(note); } }} className="group relative flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-xl border border-(--crm-border-soft) bg-white p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-(--crm-border-input) hover:shadow-[0_8px_24px_rgba(0,0,0,.10)] sm:aspect-[4/5] sm:p-4">
-                {meta ? (
-                  <>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="line-clamp-2 min-w-0 flex-1 text-[0.8rem] font-semibold leading-5 text-(--crm-fg)">{note.title || "untitled"}</p>
-                      <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete file"><Trash2 size={14} /></button>
-                    </div>
-                    <div className="flex flex-1 items-center justify-center">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-xl text-xl font-black" style={{ background: meta.bg, color: meta.fg }}>{meta.label}</div>
-                    </div>
-                    <p className="border-t border-(--crm-border-soft) pt-2.5 text-[0.7rem] font-medium text-(--crm-muted)">{(parseCodeFiles(note.content)?.[0]?.language || "code").toUpperCase()}</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="line-clamp-2 min-w-0 flex-1 text-[0.9375rem] font-semibold leading-5 text-(--crm-fg)">{note.title || "Untitled note"}</p>
-                      <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete note"><Trash2 size={14} /></button>
-                    </div>
-                    <div className="my-3 h-px bg-(--crm-border-soft)" />
-                    {(note.tags?.length ?? 0) > 0 && (
-                      <div className="mb-2 flex flex-wrap gap-1.5">
-                        {note.tags!.slice(0, 3).map((tag) => (
-                          <button
-                            key={tag}
-                            onClick={(event) => { event.stopPropagation(); setActiveTag(activeTag === tag ? null : tag); }}
-                            className={`rounded-full px-2 py-0.5 text-[0.625rem] font-semibold transition-colors ${activeTag === tag ? "bg-violet-600 text-white" : "bg-violet-50 text-violet-700 hover:bg-violet-100"}`}
-                          >
-                            #{tag}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <p className="line-clamp-4 flex-1 text-[0.8125rem] leading-5 text-(--crm-secondary)">{snippet(note) || "No content yet."}</p>
-                    <p className="mt-3 border-t border-(--crm-border-soft) pt-2.5 text-[0.625rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">Updated {formatDate(note.updatedAt)}</p>
-                  </>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="line-clamp-2 min-w-0 flex-1 text-[0.9375rem] font-semibold leading-5 text-(--crm-fg)">{note.title || "Untitled note"}</p>
+                  <button onClick={(event) => { event.stopPropagation(); setConfirmDelete({ id: note.id, title: note.title }); }} className="shrink-0 rounded p-1 text-(--crm-muted) opacity-0 transition-opacity hover:bg-(--crm-danger-bg) hover:text-(--crm-danger) group-hover:opacity-100" aria-label="Delete note"><Trash2 size={14} /></button>
+                </div>
+                <div className="my-3 h-px bg-(--crm-border-soft)" />
+                {(note.tags?.length ?? 0) > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {note.tags!.slice(0, 3).map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={(event) => { event.stopPropagation(); setActiveTag(activeTag === tag ? null : tag); }}
+                        className={`rounded-full px-2 py-0.5 text-[0.625rem] font-semibold transition-colors ${activeTag === tag ? "bg-violet-600 text-white" : "bg-violet-50 text-violet-700 hover:bg-violet-100"}`}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
                 )}
+                <p className="line-clamp-4 flex-1 text-[0.8125rem] leading-5 text-(--crm-secondary)">{snippet(note) || "No content yet."}</p>
+                <p className="mt-3 border-t border-(--crm-border-soft) pt-2.5 text-[0.625rem] font-medium uppercase tracking-[.1em] text-(--crm-faint)">Updated {formatDate(note.updatedAt)}</p>
               </div>
-              );
-            })}
+            ))}
         </div>
       )}
 
        {confirmModal}
        {toast && <div className="fixed bottom-5 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-(--crm-dark) px-4 py-3 text-xs font-semibold text-white shadow-xl">{toast}</div>}
-    {newCodeModal}
-    {moveModalEl}
     </NotesShell>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
+import React from "react";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bug,
   ChevronLeft,
+  ChevronRight,
   Files,
   FileCode,
   Folder,
@@ -33,6 +35,14 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((m) => m.
 
 export type ExplorerItem = { noteId: string; name: string; language: string };
 export type OpenTabItem = { noteId: string; name: string; language: string };
+
+type TreeNode = {
+  noteId: string;
+  name: string;
+  language: string;
+  isFolder: boolean;
+  children: TreeNode[];
+};
 
 type MenuItem = { label?: string; onClick?: () => void; danger?: boolean; separator?: boolean };
 
@@ -106,6 +116,60 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
   const [gearOpen, setGearOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  // Build tree from flat explorer items (indented with spaces from NotesView)
+  const tree = useMemo(() => {
+    const root: TreeNode[] = [];
+    const stack: { node: TreeNode; depth: number }[] = [];
+
+    for (const item of explorerItems) {
+      const isFolder = item.language === "folder";
+      const indent = item.name.length - item.name.trimStart().length;
+      const depth = Math.floor(indent / 2);
+      const node: TreeNode = { noteId: item.noteId, name: item.name.trimStart(), language: item.language, isFolder, children: [] };
+
+      while (stack.length > 0 && stack[stack.length - 1].depth >= depth) stack.pop();
+
+      if (stack.length === 0) {
+        root.push(node);
+      } else {
+        stack[stack.length - 1].node.children.push(node);
+      }
+      stack.push({ node, depth });
+    }
+    return root;
+  }, [explorerItems]);
+
+  // Track known folder IDs to expand new ones automatically
+  const knownFoldersRef = useRef(new Set<string>());
+  useEffect(() => {
+    const currentFolderIds = new Set<string>();
+    const walk = (nodes: TreeNode[]) => {
+      for (const n of nodes) {
+        if (n.isFolder) { currentFolderIds.add(n.noteId); walk(n.children); }
+      }
+    };
+    walk(tree);
+    const newIds = [...currentFolderIds].filter((id) => !knownFoldersRef.current.has(id));
+    if (newIds.length > 0) {
+      setExpandedFolders((prev) => {
+        const next = new Set(prev);
+        for (const id of newIds) next.add(id);
+        return next;
+      });
+    }
+    knownFoldersRef.current = currentFolderIds;
+  }, [tree]);
+
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  };
 
   const editorRef = useRef<unknown>(null);
   const monacoRef = useRef<unknown>(null);
@@ -270,55 +334,114 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
             </div>
             <div className="px-3 pb-2 text-[0.7rem] uppercase tracking-wide text-[#bbbbbb]">CODE</div>
             <div className="flex-1 overflow-y-auto px-2">
-              {explorerItems.length === 0 && (
+              {tree.length === 0 && (
                 <div className="px-2 py-2 text-xs text-[#6c6c6c]">No files yet</div>
               )}
-              {explorerItems.map((item) => {
-                const isActive = item.noteId === activeNoteId;
-                const isEditing = editingId === item.noteId;
-                const isFolder = item.language === "folder";
-                return (
-                  <button
-                    key={item.noteId}
-                    onClick={() => {
-                      if (isEditing) return;
-                      if (isFolder && onSelectFolder) onSelectFolder(item.noteId);
-                      else onSelectFile(item.noteId);
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(item.noteId, item.name) });
-                    }}
-                    onDoubleClick={() => { if (isActive) { setEditingId(item.noteId); setEditValue(item.name); } }}
-                    title={isActive ? "Double-click to rename · right-click for menu" : isFolder ? "Open folder" : "Open file · right-click for menu"}
-                    className={`flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs ${
-                      isActive ? "bg-[#37373d] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
-                    }`}
-                  >
-                    {isFolder ? (
-                      <Folder size={14} className="shrink-0 text-[#dcb67a]" />
-                    ) : (
+              {(() => {
+                const renderNode = (node: TreeNode, depth: number): React.ReactNode => {
+                  const isActive = node.noteId === activeNoteId;
+                  const isEditing = editingId === node.noteId;
+                  const paddingLeft = 8 + depth * 16;
+
+                  if (node.isFolder) {
+                    const isExpanded = expandedFolders.has(node.noteId);
+                    return (
+                      <div key={node.noteId}>
+                        <button
+                          onClick={() => {
+                            if (isEditing) return;
+                            toggleFolder(node.noteId);
+                            if (onSelectFolder) onSelectFolder(node.noteId);
+                          }}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(node.noteId, node.name) });
+                          }}
+                          onDoubleClick={() => { if (isActive) { setEditingId(node.noteId); setEditValue(node.name); } }}
+                          title={isActive ? "Double-click to rename · right-click for menu" : "Open folder"}
+                          className={`flex w-full items-center gap-1 rounded-sm py-1 text-left text-xs ${
+                            isActive ? "bg-[#37373d] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
+                          }`}
+                          style={{ paddingLeft }}
+                        >
+                          <ChevronRight
+                            size={14}
+                            className="shrink-0 text-[#858585] transition-transform duration-100"
+                            style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}
+                          />
+                          {isExpanded ? (
+                            <FolderOpen size={14} className="shrink-0 text-[#dcb67a]" />
+                          ) : (
+                            <Folder size={14} className="shrink-0 text-[#dcb67a]" />
+                          )}
+                          {isEditing ? (
+                            <input
+                              autoFocus
+                              value={editValue}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onBlur={() => commitRename(node.noteId, editValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") commitRename(node.noteId, editValue);
+                                else if (e.key === "Escape") setEditingId(null);
+                              }}
+                              className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
+                            />
+                          ) : (
+                            <span className="truncate">{node.name}</span>
+                          )}
+                        </button>
+                        {isExpanded && node.children.length > 0 && (
+                          <div>
+                            {node.children.map((child) => renderNode(child, depth + 1))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // File node
+                  return (
+                    <button
+                      key={node.noteId}
+                      onClick={() => {
+                        if (isEditing) return;
+                        onSelectFile(node.noteId);
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setCtxMenu({ x: e.clientX, y: e.clientY, items: itemForNote(node.noteId, node.name) });
+                      }}
+                      onDoubleClick={() => { if (isActive) { setEditingId(node.noteId); setEditValue(node.name); } }}
+                      title={isActive ? "Double-click to rename · right-click for menu" : "Open file · right-click for menu"}
+                      className={`flex w-full items-center gap-2 rounded-sm py-1 text-left text-xs ${
+                        isActive ? "bg-[#37373d] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
+                      }`}
+                      style={{ paddingLeft }}
+                    >
                       <FileCode size={14} className="shrink-0 text-[#4ec9b0]" />
-                    )}
-                    {isEditing ? (
-                      <input
-                        autoFocus
-                        value={editValue}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={() => commitRename(item.noteId, editValue)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") commitRename(item.noteId, editValue);
-                          else if (e.key === "Escape") setEditingId(null);
-                        }}
-                        className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
-                      />
-                    ) : (
-                      <span className="truncate">{isFolder ? item.name : item.name}</span>
-                    )}
-                  </button>
-                );
-              })}
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          value={editValue}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={() => commitRename(node.noteId, editValue)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitRename(node.noteId, editValue);
+                            else if (e.key === "Escape") setEditingId(null);
+                          }}
+                          className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
+                        />
+                      ) : (
+                        <span className="truncate">{node.name}</span>
+                      )}
+                    </button>
+                  );
+                };
+
+                return tree.map((node) => renderNode(node, 0));
+              })()}
             </div>
             <div className="flex gap-1 m-2">
               <button

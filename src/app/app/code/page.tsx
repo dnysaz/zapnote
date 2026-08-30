@@ -1,7 +1,7 @@
 "use client";
 
-import { NotesView } from "@/components/NotesView";
+import { CodeExplorer } from "@/components/CodeExplorer";
 
 export default function CodePage() {
-  return <NotesView mode="code" />;
+  return <CodeExplorer />;
 }
