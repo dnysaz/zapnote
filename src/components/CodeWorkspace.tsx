@@ -215,7 +215,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
       ? [
           { id: "rename", title: "File: Rename Active", run: () => { const it = explorerItems.find((e) => e.noteId === activeNoteId); setEditingId(activeNoteId); setEditValue(it?.name ?? ""); setGearOpen(false); } },
           { id: "duplicate", title: "File: Duplicate Active", run: () => onDuplicateNote(activeNoteId) },
-          { id: "delete", title: "File: Delete Active", run: () => onDeleteNote(activeNoteId) },
+          { id: "delete", title: "File: Delete Active", run: () => { const it = explorerItems.find((e) => e.noteId === activeNoteId); setDeleteConfirm({ noteId: activeNoteId, name: it?.name ?? "Untitled" }); } },
         ]
       : []),
     ...LANGUAGES.map((l) => ({ id: "lang-" + l, title: "Language: " + l, run: () => onSetLanguage(l) })),
