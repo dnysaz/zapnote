@@ -10,6 +10,7 @@ import {
   isFolderNote,
   parentIdOf,
   folderTags,
+  tagsWithParent,
   uid,
 } from "@/lib/crm";
 import { codeLangForExt } from "@/components/EditorToolbar";
@@ -208,9 +209,7 @@ function EditorInner({ init }: { init: EditorInit }) {
     const seed: CodeFile[] = [{ name: fileName, language, content: "" }];
     const now = new Date().toISOString();
     const id = uid();
-    const parentFolder = currentFolderId ? notes.find((n) => n.id === currentFolderId) : null;
-    const parent = parentFolder ? parentIdOf(parentFolder) : null;
-    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: [`__zf_parent:${parent ?? ""}`], createdAt: now, updatedAt: now });
+    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: tagsWithParent([], currentFolderId), createdAt: now, updatedAt: now });
     setFiles((prev) => [...prev, seed[0]]);
     setOpenTabs((prev) => [...prev, { noteId: id, name: fileName, language }]);
     setActiveFile(files.length);
@@ -221,9 +220,7 @@ function EditorInner({ init }: { init: EditorInit }) {
     const folderName = name || "New Folder";
     const now = new Date().toISOString();
     const id = uid();
-    const parentFolder = currentFolderId ? notes.find((n) => n.id === currentFolderId) : null;
-    const parent = parentFolder ? parentIdOf(parentFolder) : null;
-    addNote({ id, title: folderName, content: "", kind: "folder", tags: folderTags(parent), createdAt: now, updatedAt: now });
+    addNote({ id, title: folderName, content: "", kind: "folder", tags: folderTags(currentFolderId), createdAt: now, updatedAt: now });
   }
 
   function handleAddFileInFolder(folderId: string, name?: string) {
@@ -232,7 +229,7 @@ function EditorInner({ init }: { init: EditorInit }) {
     const seed: CodeFile[] = [{ name: fileName, language, content: "" }];
     const now = new Date().toISOString();
     const id = uid();
-    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: [`__zf_parent:${folderId}`], createdAt: now, updatedAt: now });
+    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: tagsWithParent([], folderId), createdAt: now, updatedAt: now });
   }
 
   function handleAddFolderInFolder(folderId: string, name?: string) {

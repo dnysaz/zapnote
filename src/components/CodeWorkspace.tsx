@@ -123,6 +123,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [creatingItem, setCreatingItem] = useState<{ parentId: string | null; type: "file" | "folder" } | null>(null);
   const [creatingName, setCreatingName] = useState("");
+  const [creatingError, setCreatingError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ noteId: string; name: string } | null>(null);
 
   // Build tree from flat explorer items (indented with spaces from NotesView)
@@ -241,13 +242,47 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
 
   const commitRename = (noteId: string, raw: string) => {
     const name = raw.trim();
-    if (name) onRenameNote(noteId, name);
+    if (!name) { setEditingId(null); return; }
+    const item = explorerItems.find((e) => e.noteId === noteId);
+    const type = item?.language === "folder" ? "folder" : "file";
+    const hasDuplicate = explorerItems.some((e) => {
+      if (e.noteId === noteId) return false;
+      const isItemFolder = e.language === "folder";
+      const eName = e.name.trim();
+      if (eName.toLowerCase() !== name.toLowerCase()) return false;
+      if (type === "folder" && !isItemFolder) return false;
+      if (type === "file" && isItemFolder) return false;
+      return true;
+    });
+    if (hasDuplicate) { setEditingId(null); return; }
+    onRenameNote(noteId, name);
     setEditingId(null);
   };
+
+  function checkDuplicate(name: string, type: "file" | "folder"): boolean {
+    return explorerItems.some((item) => {
+      const isItemFolder = item.language === "folder";
+      const itemName = item.name.trim();
+      if (itemName.toLowerCase() !== name.toLowerCase()) return false;
+      if (type === "folder" && !isItemFolder) return false;
+      if (type === "file" && isItemFolder) return false;
+      return true;
+    });
+  }
 
   const commitCreate = (raw: string) => {
     if (!creatingItem) return;
     const name = raw.trim();
+    if (!name) {
+      setCreatingItem(null);
+      setCreatingName("");
+      setCreatingError("");
+      return;
+    }
+    if (checkDuplicate(name, creatingItem.type)) {
+      setCreatingError(`A ${creatingItem.type} with this name already exists`);
+      return;
+    }
     if (creatingItem.type === "file") {
       if (creatingItem.parentId) onAddFileInFolder?.(creatingItem.parentId, name);
       else onAddFile(name);
@@ -257,6 +292,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     }
     setCreatingItem(null);
     setCreatingName("");
+    setCreatingError("");
   };
 
   return (
@@ -487,24 +523,27 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                 return tree.map((node) => renderNode(node, 0));
               })()}
               {creatingItem && (
-                <div className="flex items-center gap-1 py-1" style={{ paddingLeft: 8 }}>
-                  {creatingItem.type === "folder" ? (
-                    <Folder size={14} className="shrink-0 text-[#dcb67a]" />
-                  ) : (
-                    <FileCode size={14} className="shrink-0 text-[#4ec9b0]" />
-                  )}
-                  <input
-                    autoFocus
-                    value={creatingName}
-                    onChange={(e) => setCreatingName(e.target.value)}
-                    onBlur={() => commitCreate(creatingName)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitCreate(creatingName);
-                      else if (e.key === "Escape") { setCreatingItem(null); setCreatingName(""); }
-                    }}
-                    placeholder={creatingItem.type === "folder" ? "Folder name" : "File name"}
-                    className="min-w-0 flex-1 rounded-sm border border-[#007fd4] bg-[#3c3c3c] px-1 text-xs text-white outline-none"
-                  />
+                <div className="py-1" style={{ paddingLeft: 8 }}>
+                  <div className="flex items-center gap-1">
+                    {creatingItem.type === "folder" ? (
+                      <Folder size={14} className="shrink-0 text-[#dcb67a]" />
+                    ) : (
+                      <FileCode size={14} className="shrink-0 text-[#4ec9b0]" />
+                    )}
+                    <input
+                      autoFocus
+                      value={creatingName}
+                      onChange={(e) => { setCreatingName(e.target.value); setCreatingError(""); }}
+                      onBlur={() => commitCreate(creatingName)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitCreate(creatingName);
+                        else if (e.key === "Escape") { setCreatingItem(null); setCreatingName(""); setCreatingError(""); }
+                      }}
+                      placeholder={creatingItem.type === "folder" ? "Folder name" : "File name"}
+                      className={`min-w-0 flex-1 rounded-sm border bg-[#3c3c3c] px-1 text-xs text-white outline-none ${creatingError ? "border-[#f48771]" : "border-[#007fd4]"}`}
+                    />
+                  </div>
+                  {creatingError && <p className="mt-0.5 text-[0.65rem] text-[#f48771]">{creatingError}</p>}
                 </div>
               )}
             </div>
