@@ -164,40 +164,44 @@ function EditorInner({ init }: { init: EditorInit }) {
     }
   }
 
-  function handleAddFile() {
-    const name = "untitled";
+  function handleAddFile(name?: string) {
+    const fileName = name || "untitled";
     const language = "plaintext";
-    const seed: CodeFile[] = [{ name, language, content: "" }];
+    const seed: CodeFile[] = [{ name: fileName, language, content: "" }];
     const now = new Date().toISOString();
     const id = uid();
-    addNote({ id, title: name, content: serializeCodeFiles(seed), kind: "code", language, createdAt: now, updatedAt: now });
+    const parentFolder = currentFolderId ? notes.find((n) => n.id === currentFolderId) : null;
+    const parent = parentFolder ? parentIdOf(parentFolder) : null;
+    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: [`__zf_parent:${parent ?? ""}`], createdAt: now, updatedAt: now });
     setFiles((prev) => [...prev, seed[0]]);
-    setOpenTabs((prev) => [...prev, { noteId: id, name, language }]);
+    setOpenTabs((prev) => [...prev, { noteId: id, name: fileName, language }]);
     setActiveFile(files.length);
     setActiveNoteId(id);
   }
 
-  function handleAddFolder() {
-    const name = "New Folder";
+  function handleAddFolder(name?: string) {
+    const folderName = name || "New Folder";
     const now = new Date().toISOString();
     const id = uid();
-    addNote({ id, title: name, content: "", kind: "folder", tags: folderTags(currentFolderId), createdAt: now, updatedAt: now });
+    const parentFolder = currentFolderId ? notes.find((n) => n.id === currentFolderId) : null;
+    const parent = parentFolder ? parentIdOf(parentFolder) : null;
+    addNote({ id, title: folderName, content: "", kind: "folder", tags: folderTags(parent), createdAt: now, updatedAt: now });
   }
 
-  function handleAddFileInFolder(folderId: string) {
-    const name = "untitled";
+  function handleAddFileInFolder(folderId: string, name?: string) {
+    const fileName = name || "untitled";
     const language = "plaintext";
-    const seed: CodeFile[] = [{ name, language, content: "" }];
+    const seed: CodeFile[] = [{ name: fileName, language, content: "" }];
     const now = new Date().toISOString();
     const id = uid();
-    addNote({ id, title: name, content: serializeCodeFiles(seed), kind: "code", language, tags: [`__zf_parent:${folderId}`], createdAt: now, updatedAt: now });
+    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: [`__zf_parent:${folderId}`], createdAt: now, updatedAt: now });
   }
 
-  function handleAddFolderInFolder(folderId: string) {
-    const name = "New Folder";
+  function handleAddFolderInFolder(folderId: string, name?: string) {
+    const folderName = name || "New Folder";
     const now = new Date().toISOString();
     const id = uid();
-    addNote({ id, title: name, content: "", kind: "folder", tags: folderTags(folderId), createdAt: now, updatedAt: now });
+    addNote({ id, title: folderName, content: "", kind: "folder", tags: folderTags(folderId), createdAt: now, updatedAt: now });
   }
 
   function handleRename(noteId: string, name: string) {

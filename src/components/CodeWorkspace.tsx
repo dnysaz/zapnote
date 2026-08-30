@@ -55,10 +55,10 @@ type CodeWorkspaceProps = {
   files: CodeFile[];
   activeFile: number;
   onChange: (value: string) => void;
-  onAddFile: () => void;
-  onAddFileInFolder?: (folderId: string) => void;
-  onAddFolder?: () => void;
-  onAddFolderInFolder?: (folderId: string) => void;
+  onAddFile: (name?: string) => void;
+  onAddFileInFolder?: (folderId: string, name?: string) => void;
+  onAddFolder?: (name?: string) => void;
+  onAddFolderInFolder?: (folderId: string, name?: string) => void;
   explorerItems: ExplorerItem[];
   openTabs: OpenTabItem[];
   activeNoteId: string | null | undefined;
@@ -248,14 +248,12 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
   const commitCreate = (raw: string) => {
     if (!creatingItem) return;
     const name = raw.trim();
-    if (name) {
-      if (creatingItem.type === "file") {
-        if (creatingItem.parentId) onAddFileInFolder?.(creatingItem.parentId);
-        else onAddFile();
-      } else {
-        if (creatingItem.parentId) onAddFolderInFolder?.(creatingItem.parentId);
-        else onAddFolder?.();
-      }
+    if (creatingItem.type === "file") {
+      if (creatingItem.parentId) onAddFileInFolder?.(creatingItem.parentId, name);
+      else onAddFile(name);
+    } else {
+      if (creatingItem.parentId) onAddFolderInFolder?.(creatingItem.parentId, name);
+      else onAddFolder?.(name);
     }
     setCreatingItem(null);
     setCreatingName("");
@@ -561,7 +559,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
               );
             })}
             <button
-              onClick={onAddFile}
+              onClick={() => onAddFile()}
               className="flex items-center px-3 text-xs text-[#969696] hover:bg-[#2d2d2d] hover:text-white"
               title="New file"
             >
