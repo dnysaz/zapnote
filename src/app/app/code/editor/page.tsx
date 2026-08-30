@@ -9,6 +9,7 @@ import {
   serializeCodeFiles,
   isFolderNote,
   parentIdOf,
+  folderTags,
   uid,
 } from "@/lib/crm";
 import { codeLangForExt } from "@/components/EditorToolbar";
@@ -176,6 +177,13 @@ function EditorInner({ init }: { init: EditorInit }) {
     setActiveNoteId(id);
   }
 
+  function handleAddFolder() {
+    const name = "New Folder";
+    const now = new Date().toISOString();
+    const id = uid();
+    addNote({ id, title: name, content: "", kind: "folder", tags: folderTags(currentFolderId), createdAt: now, updatedAt: now });
+  }
+
   function handleRename(noteId: string, name: string) {
     const note = notes.find((n) => n.id === noteId);
     if (!note) return;
@@ -261,6 +269,7 @@ function EditorInner({ init }: { init: EditorInit }) {
       activeFile={activeFile}
       onChange={handleChange}
       onAddFile={handleAddFile}
+      onAddFolder={handleAddFolder}
       explorerItems={explorerItems}
       openTabs={openTabs}
       activeNoteId={activeNoteId}
