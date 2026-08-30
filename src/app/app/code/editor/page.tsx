@@ -358,7 +358,7 @@ function EditorInner({ init }: { init: EditorInit }) {
 }
 
 export default function CodeEditorPage() {
-  const [init] = useState<EditorInit | null>(() => readInit());
+  const init = useMemo(() => readInit(), []);
 
   if (!init) {
     return (
