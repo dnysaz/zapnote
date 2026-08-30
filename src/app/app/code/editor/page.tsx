@@ -120,7 +120,7 @@ function EditorInner({ init }: { init: EditorInit }) {
   const explorerItems: ExplorerItem[] = useMemo(() => {
     const items: ExplorerItem[] = [];
 
-    let rootId: string | null = null;
+    let rootId: string | null | undefined;
     if (init?.mode === "folder" && init.folderId) {
       rootId = init.folderId;
     } else if (init?.mode === "file" && init.noteId) {
@@ -146,17 +146,18 @@ function EditorInner({ init }: { init: EditorInit }) {
         });
     };
 
-    if (rootId) {
-      buildFolder(rootId, 0);
-    } else {
-      notes
-        .filter((n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === null)
-        .sort((a, b) => a.title.localeCompare(b.title))
-        .forEach((n) => {
-          const f = parseCodeFiles(n.content)?.[0];
-          items.push({ noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? "plaintext", parentId: null });
-        });
-      buildFolder(null, 0);
+    if (rootId !== undefined) {
+      if (rootId === null) {
+        notes
+          .filter((n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === null)
+          .sort((a, b) => a.title.localeCompare(b.title))
+          .forEach((n) => {
+            const f = parseCodeFiles(n.content)?.[0];
+            items.push({ noteId: n.id, name: f?.name ?? n.title ?? "untitled", language: f?.language ?? "plaintext", parentId: null });
+          });
+      } else {
+        buildFolder(rootId, 0);
+      }
     }
     return items;
   }, [notes, init]);
