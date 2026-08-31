@@ -77,7 +77,7 @@ function loadFiles(notes: ReturnType<typeof useNotes>["notes"], init: EditorInit
       });
       return { files, tabs, folderId };
     }
-    folderId = parentIdOf(folder);
+    folderId = init.folderId;
 
     const children = notes.filter(
       (n) => !isFolderNote(n) && n.kind === "code" && parentIdOf(n) === init.folderId

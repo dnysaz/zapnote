@@ -255,30 +255,17 @@ export function CodeExplorer() {
   }
 
   function handleDeleteSingle(id: string, title: string, isFolder: boolean) {
-    if (isFolder) {
-      const childCount = notes.filter((n) => parentIdOf(n) === id).length;
-      if (childCount === 0) {
-        deleteNote(id);
-        announce(`"${title}" deleted`);
-      } else {
-        setConfirmDelete({ id, title, isFolder: true });
-      }
-    } else {
-      deleteNote(id);
-      setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
-      announce(`"${title}" deleted`);
-    }
+    setConfirmDelete({ id, title, isFolder });
   }
 
   function handleDeleteSelected() {
     if (selectedIds.size === 0) return;
-    const count = selectedIds.size;
-    selectedIds.forEach((id) => {
-      const note = notes.find((n) => n.id === id);
-      if (note) cascadeDelete(id);
+    const first = notes.find((n) => n.id === [...selectedIds][0]);
+    setConfirmDelete({
+      id: [...selectedIds][0],
+      title: selectedIds.size > 1 ? `${selectedIds.size} items` : (first?.title || "Untitled"),
+      isFolder: first ? isFolderNote(first) : false,
     });
-    setSelectedIds(new Set());
-    announce(`${count} item${count > 1 ? "s" : ""} deleted`);
   }
 
   // --- Move / Copy ---
@@ -567,8 +554,13 @@ export function CodeExplorer() {
             message={confirmDelete.isFolder ? "All files and subfolders inside will also be deleted. This action cannot be undone." : "This action cannot be undone."}
             onClose={() => setConfirmDelete(null)}
             onConfirm={() => {
-              cascadeDelete(confirmDelete.id);
-              setSelectedIds((prev) => { const n = new Set(prev); n.delete(confirmDelete.id); return n; });
+              if (selectedIds.size > 1) {
+                selectedIds.forEach((id) => cascadeDelete(id));
+                setSelectedIds(new Set());
+              } else {
+                cascadeDelete(confirmDelete.id);
+                setSelectedIds((prev) => { const n = new Set(prev); n.delete(confirmDelete.id); return n; });
+              }
               announce(`"${confirmDelete.title}" deleted`);
               setConfirmDelete(null);
             }}
