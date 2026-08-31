@@ -75,6 +75,7 @@ type CodeWorkspaceProps = {
   onSelectFolder?: (folderId: string) => void;
   onNavigateUp?: () => void;
   currentFolderName?: string;
+  rootFolderId?: string | null;
   hasActiveNote?: boolean;
   isGuest?: boolean;
 };
@@ -108,6 +109,7 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
     onSelectFolder,
     onNavigateUp,
     currentFolderName,
+    rootFolderId,
     hasActiveNote,
     isGuest,
   } = props;
@@ -411,8 +413,8 @@ export function CodeWorkspace(props: CodeWorkspaceProps) {
                     x: e.clientX,
                     y: e.clientY,
                     items: [
-                      { label: "New File", onClick: () => { setCreatingItem({ parentId: null, type: "file" }); setCreatingName(""); } },
-                      { label: "New Folder", onClick: () => { setCreatingItem({ parentId: null, type: "folder" }); setCreatingName(""); } },
+                      { label: "New File", onClick: () => { setCreatingItem({ parentId: rootFolderId ?? null, type: "file" }); setCreatingName(""); } },
+                      { label: "New Folder", onClick: () => { setCreatingItem({ parentId: rootFolderId ?? null, type: "folder" }); setCreatingName(""); } },
                     ],
                   });
                 }

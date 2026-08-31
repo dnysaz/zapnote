@@ -116,6 +116,7 @@ function EditorInner({ init }: { init: EditorInit }) {
   const [activeFile, setActiveFile] = useState(0);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(initial.tabs[0]?.noteId ?? null);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(initial.folderId);
+  const rootFolderId = initial.folderId;
 
   const explorerItems: ExplorerItem[] = useMemo(() => {
     const items: ExplorerItem[] = [];
@@ -213,7 +214,7 @@ function EditorInner({ init }: { init: EditorInit }) {
     const seed: CodeFile[] = [{ name: fileName, language, content: "" }];
     const now = new Date().toISOString();
     const id = uid();
-    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: tagsWithParent([], currentFolderId), createdAt: now, updatedAt: now });
+    addNote({ id, title: fileName, content: serializeCodeFiles(seed), kind: "code", language, tags: tagsWithParent([], rootFolderId), createdAt: now, updatedAt: now });
     setFiles((prev) => [...prev, seed[0]]);
     setOpenTabs((prev) => [...prev, { noteId: id, name: fileName, language }]);
     setActiveFile(files.length);
@@ -224,7 +225,7 @@ function EditorInner({ init }: { init: EditorInit }) {
     const folderName = name || "New Folder";
     const now = new Date().toISOString();
     const id = uid();
-    addNote({ id, title: folderName, content: "", kind: "folder", tags: folderTags(currentFolderId), createdAt: now, updatedAt: now });
+    addNote({ id, title: folderName, content: "", kind: "folder", tags: folderTags(rootFolderId), createdAt: now, updatedAt: now });
   }
 
   function handleAddFileInFolder(folderId: string, name?: string) {
@@ -352,6 +353,7 @@ function EditorInner({ init }: { init: EditorInit }) {
       onSelectFolder={handleSelectFolder}
       onNavigateUp={currentFolderId ? handleNavigateUp : undefined}
       currentFolderName={currentFolderName || "Workspace"}
+      rootFolderId={rootFolderId}
       hasActiveNote={!!activeNoteId}
       isGuest={false}
     />
